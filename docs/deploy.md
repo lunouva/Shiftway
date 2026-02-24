@@ -7,7 +7,6 @@
 ## Frontend
 1) Set env var:
    - `VITE_API_BASE=https://<your-backend-host>`
-   - (optional) `VITE_ENABLE_DEMO=1` (internal demo only — not recommended for production)
 2) Build:
    ```bash
    npm ci
@@ -34,7 +33,9 @@
 ## Local dev (recommended)
 Bring up Postgres:
 ```bash
-docker compose -f server/docker-compose.yml up -d
+cd server
+npm run db:check
+npm run db:up
 ```
 Then run DB init + server:
 ```bash
