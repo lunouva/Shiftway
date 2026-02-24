@@ -9,8 +9,13 @@ cd server
 npm ci
 cp .env.example .env
 
-# Start Postgres (Docker)
+# Start Postgres
+# Option A (recommended): Docker
 npm run db:up
+
+# Option B: local Postgres
+# - install Postgres and ensure it's listening on 127.0.0.1:5432 (or update DATABASE_URL)
+# - then run db:init
 
 # Initialize schema + seed
 npm run db:init
