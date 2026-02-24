@@ -45,3 +45,9 @@ npm ci
 npm run db:init
 npm run dev
 ```
+
+## Troubleshooting
+- Frontend shows “Backend unreachable”: confirm server is running and `VITE_API_BASE` points to it.
+- If the backend is up but DB isn’t:
+  - `/api/health` returns `db_not_configured` → set `DATABASE_URL` in `server/.env`
+  - `/api/health` returns `db_unreachable` → Postgres isn’t reachable at `DATABASE_URL`
