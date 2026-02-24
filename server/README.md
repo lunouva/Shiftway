@@ -10,6 +10,9 @@ npm ci
 cp .env.example .env
 
 # Start Postgres
+# Check prerequisites (Docker vs local Postgres)
+npm run db:check
+
 # Option A (recommended): Docker
 npm run db:up
 
