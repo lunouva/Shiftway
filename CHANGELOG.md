@@ -20,3 +20,4 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ### Added
 - Initial app scaffold (frontend + server) with demo mode and live backend mode.
+- 2026-02-24: Ensure live default; hide demo toggle by flag (config) and gate demo UI; prepared docs for deployment
