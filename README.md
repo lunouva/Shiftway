@@ -28,9 +28,10 @@ npm run dev
 
 ## Backend
 
-Run Postgres locally (Docker):
+Run Postgres locally:
 ```bash
 cd /home/kyle/projects/apps/Shiftway/server
+npm run db:check
 npm run db:up
 ```
 
