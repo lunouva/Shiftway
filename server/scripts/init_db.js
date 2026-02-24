@@ -76,6 +76,7 @@ try {
     } else {
       console.error("No local Postgres detected.");
       console.error("Options:");
+      console.error("  0) Run: npm run db:check  (prints which prerequisites are available)");
       console.error("  1) Install Docker, then run: npm run db:up");
       console.error("  2) Install Postgres locally and ensure it matches your DATABASE_URL");
       console.error("  3) Point DATABASE_URL at a reachable Postgres instance");
