@@ -1571,8 +1571,9 @@ function LoginPage({ onAfterLogin, backendMode }) {
   const { login, registerCompany, requestMagicLink, loginWithGoogle, backendMode: authBackendMode } = useAuth();
   const isLive = backendMode ?? authBackendMode;
   const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState(isLive ? "" : "manager@demo.local");
-  const [password, setPassword] = useState(isLive ? "" : "demo");
+  // Don’t auto-suggest demo creds unless demo is explicitly enabled.
+  const [email, setEmail] = useState(isLive ? "" : (DEMO_MODE ? "manager@demo.local" : ""));
+  const [password, setPassword] = useState(isLive ? "" : (DEMO_MODE ? "demo" : ""));
   const [company, setCompany] = useState("");
   const [fullName, setFullName] = useState("");
   const [err, setErr] = useState("");
