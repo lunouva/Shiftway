@@ -83,9 +83,9 @@ const urlBase64ToUint8Array = (base64String) => {
 const ENABLE_DEMO = import.meta?.env?.VITE_ENABLE_DEMO === '1';
 const DEMO_MODE = ENABLE_DEMO && new URLSearchParams(window.location.search).get('demo') === '1';
 
-// Hide internal backend/demo controls from normal users.
-// In production, you should ship with these disabled.
-const SHOW_BACKEND_SETTINGS = import.meta.env.DEV || import.meta?.env?.VITE_SHOW_BACKEND_SETTINGS === '1';
+// Hide internal backend controls from normal users.
+// Enable explicitly when needed.
+const SHOW_BACKEND_SETTINGS = import.meta?.env?.VITE_SHOW_BACKEND_SETTINGS === '1';
 
 const STORAGE_KEY = "shiftway_v2";
 const CLIENT_SETTINGS_KEY = "shiftway_client_settings";
