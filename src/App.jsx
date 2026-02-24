@@ -1296,7 +1296,7 @@ function InnerApp(props) {
                   />
                 </div>
                 <div className="mt-2 text-xs text-gray-600">
-                  Hidden by default. Enable via <code>VITE_SHOW_BACKEND_SETTINGS=1</code> (or dev mode).
+                  Hidden by default. Enable via <code>VITE_SHOW_BACKEND_SETTINGS=1</code>.
                 </div>
               </div>
             )}
