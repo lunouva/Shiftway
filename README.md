@@ -25,13 +25,13 @@ npm run dev
 - The frontend uses `VITE_API_BASE`.
   - Local dev default: `http://localhost:4000`
   - Deployed default: same-origin (recommended to set `VITE_API_BASE` explicitly)
-- Optional internal demo mode can be enabled at build time with `VITE_ENABLE_DEMO=1` and activated with `?demo=1` (no user-facing toggle).
 
 ## Backend
 
-Optional: run Postgres locally via Docker:
+Run Postgres locally (Docker):
 ```bash
-docker compose -f server/docker-compose.yml up -d
+cd /home/kyle/projects/apps/Shiftway/server
+npm run db:up
 ```
 
 Then:
@@ -67,6 +67,14 @@ If you see an error like:
 > refusing to allow an OAuth App to create or update workflow ... without `workflow` scope
 
 …then create the workflow file via the GitHub web UI (or use a PAT that includes the `workflow` scope).
+
+## Internal demo (optional)
+
+Demo mode is available only for internal demos:
+- build-time flag: `VITE_ENABLE_DEMO=1`
+- then open the app with `?demo=1`
+
+This is intentionally hidden from normal production usage.
 
 ## Marketing site
 
