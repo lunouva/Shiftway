@@ -16,6 +16,7 @@ const psql = has("psql");
 console.log("Shiftway DB prerequisites check");
 console.log(`- docker: ${docker ? "yes" : "no"}`);
 console.log(`- psql:   ${psql ? "yes" : "no"}`);
+console.log(`- DATABASE_URL in env: ${process.env.DATABASE_URL ? "yes" : "no"}`);
 console.log("");
 
 if (docker) {
@@ -34,6 +35,10 @@ if (psql) {
 
 console.error("Neither Docker nor psql were found.");
 console.error("To run the Live backend locally you need a reachable Postgres instance.");
+if (!process.env.DATABASE_URL) {
+  console.error("Also: DATABASE_URL is not set in the environment.");
+  console.error("Create server/.env from server/.env.example and set DATABASE_URL.");
+}
 console.error("Options:");
 console.error("  1) Install Docker, then run: npm run db:up");
 console.error("  2) Install Postgres locally and set DATABASE_URL in server/.env");
