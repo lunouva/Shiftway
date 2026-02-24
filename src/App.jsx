@@ -621,9 +621,26 @@ export default function App() {
         setHydrated(true);
         setApiError(null);
       })
-      .catch((err) => {
+      .catch(async (err) => {
         console.error(err);
-        setApiError(`${err?.message || 'Unable to reach server'} (API: ${getApiBase(clientSettings)})`);
+        const baseMsg = err?.message || 'Unable to reach server';
+
+        // Best-effort: probe /api/health to distinguish “backend down” vs “DB not configured/unreachable”.
+        try {
+          await apiFetch("/api/health", {}, clientSettings);
+          setApiError(`${baseMsg} (API: ${getApiBase(clientSettings)})`);
+        } catch (healthErr) {
+          const hm = String(healthErr?.message || "");
+          if (hm.includes("db_not_configured")) {
+            setApiError(`Backend is up but DATABASE_URL is not configured (API: ${getApiBase(clientSettings)}). Create server/.env from server/.env.example, set DATABASE_URL, then run: npm run db:init`);
+            return;
+          }
+          if (hm.includes("db_unreachable")) {
+            setApiError(`Backend is up but the database is unreachable (API: ${getApiBase(clientSettings)}). Ensure Postgres is running and DATABASE_URL is reachable, then re-run: npm run db:init`);
+            return;
+          }
+          setApiError(`${baseMsg} (API: ${getApiBase(clientSettings)})`);
+        }
       })
       .finally(() => setLoading(false));
   }, [backendMode, authUser, clientSettings]);
