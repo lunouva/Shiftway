@@ -267,7 +267,7 @@ app.get("/api/health", async (req, res) => {
   } catch (err) {
     const msg = String(err?.message || "");
     const error = msg.includes("Missing DATABASE_URL") ? "db_not_configured" : "db_unreachable";
-    res.status(500).json({ ok: false, db: false, error, ...diagnostics });
+    res.status(503).json({ ok: false, db: false, error, ...diagnostics });
   }
 });
 
@@ -459,7 +459,7 @@ app.use((err, req, res, next) => {
   // This keeps Live mode actionable when the API is up but DB wiring is not.
   const rawMessage = String(err?.message || "");
   const dbConfigMissing = rawMessage.includes("Missing DATABASE_URL");
-  const dbUnreachable = err?.code === "ECONNREFUSED" || rawMessage.includes("connect ECONNREFUSED") || rawMessage.includes("getaddrinfo ENOTFOUND");
+  const dbUnreachable = ["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "EHOSTUNREACH"].includes(err?.code) || rawMessage.includes("connect ECONNREFUSED") || rawMessage.includes("connect ETIMEDOUT") || rawMessage.includes("getaddrinfo ENOTFOUND") || rawMessage.includes("timeout expired");
 
   if (dbConfigMissing) {
     return res.status(503).json({
