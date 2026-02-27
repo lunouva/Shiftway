@@ -94,6 +94,8 @@ const DEMO_MODE = ENABLE_DEMO && DEMO_PARAM_ENABLED && demoAllowedOnThisHost;
 // Hide internal backend controls from normal users.
 // Enable explicitly when needed.
 const SHOW_BACKEND_SETTINGS = import.meta?.env?.VITE_SHOW_BACKEND_SETTINGS === '1';
+// Extra guard: keep demo-only controls/credentials hidden unless explicitly enabled.
+const SHOW_DEMO_CONTROLS = import.meta?.env?.VITE_SHOW_DEMO_CONTROLS === '1';
 
 const STORAGE_KEY = "shiftway_v2";
 const CLIENT_SETTINGS_KEY = "shiftway_client_settings";
@@ -1190,7 +1192,7 @@ function InnerApp(props) {
             <button disabled={!schedule} className={`rounded-xl border px-3 py-2 text-sm shadow-sm ${schedule?.status === "published" ? "bg-green-50" : ""}`} onClick={publish}>{schedule?.status === "published" ? "Unpublish" : "Publish"}</button>
             <button disabled={!schedule} className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={copyCsv}>Copy CSV</button>
             <button disabled={!schedule} className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={exportCsv}>Download CSV</button>
-            {DEMO_MODE && (
+            {DEMO_MODE && SHOW_DEMO_CONTROLS && (
               <button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={resetDemo}>Reset Demo</button>
             )}
           </div>
@@ -1705,7 +1707,7 @@ function LoginPage({ onAfterLogin, backendMode }) {
         </div>
         {!isLive && (
           <div className="mt-4 text-xs text-gray-600">
-            {DEMO_MODE && (<>
+            {DEMO_MODE && SHOW_DEMO_CONTROLS && (<>
             Demo accounts:
             <ul className="list-disc pl-5">
               <li>Manager: <code>manager@demo.local</code> / <code>demo</code></li>

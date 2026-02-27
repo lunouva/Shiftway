@@ -93,6 +93,9 @@ Example:
 
 This is intentionally hidden from normal production usage.
 
+By default, demo-only UI controls (Reset Demo, demo credential hints) stay hidden.
+Set `VITE_SHOW_DEMO_CONTROLS=1` only on an internal demo deployment if you need them.
+
 ## Marketing site
 
 Static landing page in `marketing/`. Open `marketing/index.html` in a browser.
