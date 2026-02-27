@@ -44,7 +44,7 @@ A ready-to-import Render blueprint now exists at repo root: `render.yaml`.
    If `npm run db:init` fails with `ECONNREFUSED`, Postgres is not reachable from the app host yet. Re-check `DATABASE_URL`, network rules, and DB availability before retrying.
 
 ## Local dev (recommended)
-Bring up Postgres:
+Bring up Postgres (supports `docker compose`, `docker-compose`, `podman compose`, or `podman-compose`):
 ```bash
 cd server
 npm run db:check

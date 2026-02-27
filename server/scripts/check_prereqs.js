@@ -49,14 +49,18 @@ function checkTcp({ host, port }, timeoutMs = 2500) {
 
 const docker = has("docker");
 const dockerCompose = has("docker-compose");
+const podman = has("podman");
+const podmanCompose = has("podman-compose");
 const psql = has("psql");
-const hasCompose = docker || dockerCompose;
+const hasCompose = docker || dockerCompose || podman || podmanCompose;
 const databaseUrl = process.env.DATABASE_URL || "";
 const dbTarget = parseDbTarget(databaseUrl);
 
 console.log("Shiftway DB prerequisites check");
 console.log(`- docker: ${docker ? "yes" : "no"}`);
 console.log(`- docker-compose: ${dockerCompose ? "yes" : "no"}`);
+console.log(`- podman: ${podman ? "yes" : "no"}`);
+console.log(`- podman-compose: ${podmanCompose ? "yes" : "no"}`);
 console.log(`- psql:   ${psql ? "yes" : "no"}`);
 console.log(`- DATABASE_URL in env: ${databaseUrl ? "yes" : "no"}`);
 
@@ -71,7 +75,7 @@ if (dbTarget) {
 console.log("");
 
 if (hasCompose) {
-  console.log("Recommended: run Postgres via Docker Compose:");
+  console.log("Recommended: run Postgres via a Compose runtime (Docker/Podman):");
   console.log("  npm run db:up");
   console.log("  npm run db:init");
   process.exit(0);
@@ -85,20 +89,20 @@ if (psql) {
 }
 
 if (reach?.ok) {
-  console.log("No local Docker/psql detected, but DATABASE_URL is reachable.");
+  console.log("No local Compose runtime/psql detected, but DATABASE_URL is reachable.");
   console.log("You can proceed with:");
   console.log("  npm run db:init");
   process.exit(0);
 }
 
-console.error("Neither Docker Compose nor psql were found.");
+console.error("Neither a Compose runtime (Docker/Podman) nor psql were found.");
 console.error("To run the Live backend locally you need a reachable Postgres instance.");
 if (!databaseUrl) {
   console.error("Also: DATABASE_URL is not set in the environment.");
   console.error("Create server/.env from server/.env.example and set DATABASE_URL.");
 }
 console.error("Options:");
-console.error("  1) Install Docker (or docker-compose), then run: npm run db:up");
+console.error("  1) Install docker compose / docker-compose / podman compose / podman-compose, then run: npm run db:up");
 console.error("  2) Install Postgres locally and set DATABASE_URL in server/.env");
 console.error("  3) Point DATABASE_URL at a reachable Postgres instance");
 process.exit(1);

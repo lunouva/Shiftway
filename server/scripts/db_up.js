@@ -2,24 +2,35 @@
 import { spawnSync } from 'node:child_process';
 
 function runCompose(args) {
-  // Prefer modern `docker compose`, but support legacy `docker-compose` too.
-  let res = spawnSync('docker', ['compose', ...args], { stdio: 'inherit' });
-  if ((res.status ?? 1) !== 0 && !res.error) {
-    res = spawnSync('docker-compose', args, { stdio: 'inherit' });
+  const attempts = [
+    { cmd: 'docker', args: ['compose', ...args], label: 'docker compose' },
+    { cmd: 'docker-compose', args, label: 'docker-compose' },
+    { cmd: 'podman', args: ['compose', ...args], label: 'podman compose' },
+    { cmd: 'podman-compose', args, label: 'podman-compose' },
+  ];
+
+  let last = null;
+  for (const attempt of attempts) {
+    const res = spawnSync(attempt.cmd, attempt.args, { stdio: 'inherit' });
+    if (res.error?.code === 'ENOENT') continue;
+    last = { ...res, label: attempt.label };
+    if ((res.status ?? 1) === 0) return last;
   }
-  return res;
+
+  return last || { error: { code: 'ENOENT' } };
 }
 
 const res = runCompose(['-f', 'docker-compose.yml', 'up', '-d']);
 
 if (res.error) {
   if (res.error.code === 'ENOENT') {
-    console.error('Docker/Compose is not installed or not on PATH.');
-    console.error('To run Postgres via Docker: install Docker Desktop / Engine, then re-run: npm run db:up');
+    console.error('No supported Compose runtime found on PATH.');
+    console.error('Install one of: docker compose, docker-compose, podman compose, or podman-compose.');
+    console.error('Then re-run: npm run db:up');
     console.error('Alternatively: install Postgres locally and set DATABASE_URL in server/.env before running: npm run db:init');
     process.exit(1);
   }
-  console.error('Failed to start docker compose:', res.error.message || res.error);
+  console.error('Failed to start compose stack:', res.error.message || res.error);
   process.exit(1);
 }
 
