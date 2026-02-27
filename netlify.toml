@@ -4,6 +4,10 @@
 
 [build.environment]
   NODE_VERSION = "20"   # pin to Node 20 on Netlify
+  # Production-safe frontend defaults
+  VITE_ENABLE_DEMO = "0"
+  VITE_SHOW_BACKEND_SETTINGS = "0"
+  VITE_DEMO_ALLOWED_HOSTS = ""
 
 [[redirects]]
   from = "/*"
