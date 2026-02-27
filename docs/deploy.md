@@ -18,6 +18,7 @@
 1) Provision Postgres and set:
    - `DATABASE_URL=postgres://...`
 2) Set required server env vars:
+   - `NODE_ENV=production`
    - `PORT=4000` (or platform-provided)
    - `APP_URL=https://<your-frontend-host>`
    - `JWT_SECRET=...`

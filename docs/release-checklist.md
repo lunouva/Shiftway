@@ -5,6 +5,7 @@ This repo is intentionally lightweight; this checklist is here to make a "v0.1" 
 ## Prereqs
 - Node **20+** (see `.nvmrc`)
 - Postgres (for Live mode backend)
+- Optional: Docker (only if you want to run Postgres via `npm run db:up`)
 
 ## Local quality gates (run before tagging)
 ```bash
@@ -25,9 +26,15 @@ Optional (recommended) smoke checks:
 cd server
 cp .env.example .env
 npm ci
+npm run db:check
 npm run db:init
 npm run start
 ```
+
+If `npm run db:init` fails with `ECONNREFUSED 127.0.0.1:5432`:
+- start Postgres (`npm run db:up` if Docker is installed), or
+- run a local Postgres service manually, or
+- point `DATABASE_URL` at a reachable Postgres instance.
 
 ## Frontend env sanity
 - `VITE_API_BASE` should point at the server (defaults to `http://localhost:4000`).
