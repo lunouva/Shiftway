@@ -16,11 +16,42 @@ if (!process.env.DATABASE_URL) {
 }
 
 const connectionString = process.env.DATABASE_URL;
-const client = new pg.Client({ connectionString });
 let prereqChecked = false;
+
+const RETRY_ATTEMPTS = Number(process.env.DB_INIT_RETRIES || 12);
+const RETRY_DELAY_MS = Number(process.env.DB_INIT_RETRY_DELAY_MS || 1000);
 
 async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+async function tryConnectAndInit() {
+  const client = new pg.Client({ connectionString });
+  try {
+    await client.connect();
+    await client.query(sql);
+    console.log("Database initialized.");
+  } finally {
+    await client.end().catch(() => null);
+  }
+}
+
+async function retryConnectAndInit({ attempts = RETRY_ATTEMPTS, delayMs = RETRY_DELAY_MS, onRetry } = {}) {
+  let lastErr = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await tryConnectAndInit();
+      return true;
+    } catch (err) {
+      lastErr = err;
+      const isConnRefused = err && typeof err === "object" && err.code === "ECONNREFUSED";
+      if (!isConnRefused || i === attempts - 1) throw err;
+      if (typeof onRetry === "function") onRetry(i + 1, attempts, delayMs);
+      await sleep(delayMs);
+    }
+  }
+  if (lastErr) throw lastErr;
+  return false;
 }
 
 function runPrereqCheck() {
@@ -46,14 +77,12 @@ function getComposeRunner() {
   return null;
 }
 
-async function tryConnectAndInit() {
-  await client.connect();
-  await client.query(sql);
-  console.log("Database initialized.");
-}
-
 try {
-  await tryConnectAndInit();
+  await retryConnectAndInit({
+    onRetry: (attempt, attempts, delayMs) => {
+      console.error(`Postgres not ready yet (attempt ${attempt}/${attempts}); retrying in ${delayMs}ms...`);
+    },
+  });
 } catch (err) {
   let recovered = false;
 
@@ -69,16 +98,17 @@ try {
         const [composeCmd, composeArgs] = composeRunner;
         execSync([composeCmd, ...composeArgs].join(" "), { stdio: "inherit" });
         // Give Postgres a moment to accept connections.
-        for (let i = 0; i < 10; i++) {
-          try {
-            await sleep(1000);
-            await tryConnectAndInit();
-            recovered = true;
-            break;
-          } catch (e2) {
-            if (e2 && typeof e2 === "object" && e2.code === "ECONNREFUSED") continue;
-            throw e2;
-          }
+        try {
+          await retryConnectAndInit({
+            attempts: Math.max(RETRY_ATTEMPTS, 20),
+            delayMs: RETRY_DELAY_MS,
+            onRetry: (attempt, attempts) => {
+              console.error(`Waiting for Postgres after compose start (attempt ${attempt}/${attempts})...`);
+            },
+          });
+          recovered = true;
+        } catch (e2) {
+          if (!(e2 && typeof e2 === "object" && e2.code === "ECONNREFUSED")) throw e2;
         }
         if (!recovered) {
           console.error("Postgres started but is still not accepting connections (timeout). Try again in a few seconds.");
@@ -107,6 +137,4 @@ try {
     runPrereqCheck();
     process.exitCode = 1;
   }
-} finally {
-  await client.end();
 }

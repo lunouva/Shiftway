@@ -38,6 +38,8 @@ If `npm run db:init` fails with `ECONNREFUSED 127.0.0.1:5432`:
 - start Postgres (`npm run db:up` if Docker is installed), or
 - run a local Postgres service manually, or
 - point `DATABASE_URL` at a reachable Postgres instance.
+- if Postgres is starting slowly, increase init retries temporarily:
+  `DB_INIT_RETRIES=30 DB_INIT_RETRY_DELAY_MS=1000 npm run db:init`
 
 ## Frontend env sanity
 - `VITE_API_BASE` should point at the server (defaults to `http://localhost:4000`).
