@@ -236,7 +236,7 @@ const friendlyApiError = (code) => {
 };
 
 const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 } = {}, clientSettings) => {
-  const apiBase = getApiBase(clientSettings);
+  const apiBase = getApiBase(clientSettings).replace(/\/$/, "");
   let res;
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -251,9 +251,10 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
   } catch (e) {
-    if (e?.name === 'AbortError') throw new Error('Request timed out');
+    if (e?.name === 'AbortError') throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Check server health and try again.`);
     // Network / CORS / DNS / refused connection
-    throw new Error(e?.message ? `Network error: ${e.message}` : "Network error");
+    const root = e?.message ? `Network error: ${e.message}` : "Network error";
+    throw new Error(`${root}. Could not reach ${apiBase}. Check VITE_API_BASE/server URL and CORS settings.`);
   } finally {
     clearTimeout(t);
   }

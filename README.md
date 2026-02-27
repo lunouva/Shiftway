@@ -51,6 +51,11 @@ curl -sSf http://localhost:4000/api/health
 
 Server env vars are documented in `server/.env.example`.
 
+If `npm run db:init` fails with `ECONNREFUSED 127.0.0.1:5432`:
+- Run `npm run db:check` to see what prerequisites are missing.
+- If Docker is installed, start Postgres with `npm run db:up` and retry `npm run db:init`.
+- If Docker is unavailable, point `DATABASE_URL` in `server/.env` at any reachable Postgres instance and retry.
+
 ## Release checklist
 
 See `docs/release-checklist.md`.
