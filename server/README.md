@@ -22,6 +22,7 @@ npm run db:up
 
 # Initialize schema + seed
 npm run db:init
+# If Postgres is down, db:init will try to start Docker Compose automatically when available.
 
 npm run dev
 ```

@@ -22,13 +22,16 @@ async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function hasDocker() {
+function getComposeRunner() {
   try {
     execSync("command -v docker", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
+    return ["docker", ["compose", "-f", "docker-compose.yml", "up", "-d"]];
+  } catch {}
+  try {
+    execSync("command -v docker-compose", { stdio: "ignore" });
+    return ["docker-compose", ["-f", "docker-compose.yml", "up", "-d"]];
+  } catch {}
+  return null;
 }
 
 async function tryConnectAndInit() {
@@ -46,11 +49,13 @@ try {
   if (err && typeof err === "object" && err.code === "ECONNREFUSED") {
     console.error("Could not connect to Postgres (connection refused). Is your DB running?");
 
-    if (hasDocker()) {
-      // Best-effort: if Docker is available, bring up the DB automatically and retry.
+    const composeRunner = getComposeRunner();
+    if (composeRunner) {
+      // Best-effort: if Docker Compose is available, bring up the DB automatically and retry.
       try {
         console.error("Attempting to start Postgres via Docker Compose...");
-        execSync("docker compose -f docker-compose.yml up -d", { stdio: "inherit" });
+        const [composeCmd, composeArgs] = composeRunner;
+        execSync([composeCmd, ...composeArgs].join(" "), { stdio: "inherit" });
         // Give Postgres a moment to accept connections.
         for (let i = 0; i < 10; i++) {
           try {
