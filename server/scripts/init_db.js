@@ -17,9 +17,21 @@ if (!process.env.DATABASE_URL) {
 
 const connectionString = process.env.DATABASE_URL;
 const client = new pg.Client({ connectionString });
+let prereqChecked = false;
 
 async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function runPrereqCheck() {
+  if (prereqChecked) return;
+  prereqChecked = true;
+  try {
+    console.error("\nRunning prerequisite check (npm run db:check):\n");
+    execSync("npm run db:check", { stdio: "inherit" });
+  } catch {
+    // db:check already prints actionable guidance + exits non-zero when needed.
+  }
 }
 
 function getComposeRunner() {
@@ -85,11 +97,14 @@ try {
       console.error("  2) Install Postgres locally and ensure it matches your DATABASE_URL");
       console.error("  3) Point DATABASE_URL at a reachable Postgres instance");
       console.error("Then re-run: npm run db:init");
+      runPrereqCheck();
     }
   }
 
   if (!recovered) {
     console.error(err);
+    // Final nudge with concrete environment diagnostics.
+    runPrereqCheck();
     process.exitCode = 1;
   }
 } finally {
