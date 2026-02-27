@@ -55,8 +55,14 @@ npm run dev
 
 ## Production hardening flags
 Set these on your frontend build:
-- `VITE_ENABLE_DEMO=0` (or unset): hides demo-only boot path by default
+- `VITE_ENABLE_DEMO=0` (or unset): keeps demo mode disabled by default
+- `VITE_DEMO_ALLOWED_HOSTS` unset (or empty): blocks demo activation on non-local hosts
 - `VITE_SHOW_BACKEND_SETTINGS=0` (or unset): keeps backend-mode controls out of the UI
+
+For an internal demo deployment, set all three intentionally:
+- `VITE_ENABLE_DEMO=1`
+- `VITE_DEMO_ALLOWED_HOSTS=demo.shiftway.app`
+- open the app with `?demo=1`
 
 ## Post-deploy verification
 1) Open the frontend and verify login does **not** show demo credentials.

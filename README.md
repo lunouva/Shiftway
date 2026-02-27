@@ -73,7 +73,13 @@ If you see an error like:
 
 Demo mode is available only for internal demos:
 - build-time flag: `VITE_ENABLE_DEMO=1`
-- then open the app with `?demo=1`
+- URL flag: `?demo=1`
+- non-local hosts must also be allowlisted via `VITE_DEMO_ALLOWED_HOSTS`
+
+Example:
+- `VITE_ENABLE_DEMO=1`
+- `VITE_DEMO_ALLOWED_HOSTS=demo.shiftway.app`
+- open: `https://demo.shiftway.app/?demo=1`
 
 This is intentionally hidden from normal production usage.
 

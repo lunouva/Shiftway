@@ -81,7 +81,15 @@ const urlBase64ToUint8Array = (base64String) => {
 
 // ---------- demo storage + client settings ----------
 const ENABLE_DEMO = import.meta?.env?.VITE_ENABLE_DEMO === '1';
-const DEMO_MODE = ENABLE_DEMO && new URLSearchParams(window.location.search).get('demo') === '1';
+const DEMO_PARAM_ENABLED = new URLSearchParams(window.location.search).get('demo') === '1';
+const currentHost = window?.location?.hostname || '';
+const isLocalHost = currentHost === 'localhost' || currentHost === '127.0.0.1';
+const demoAllowedHosts = (import.meta?.env?.VITE_DEMO_ALLOWED_HOSTS || '')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean);
+const demoAllowedOnThisHost = isLocalHost || demoAllowedHosts.includes(currentHost.toLowerCase());
+const DEMO_MODE = ENABLE_DEMO && DEMO_PARAM_ENABLED && demoAllowedOnThisHost;
 
 // Hide internal backend controls from normal users.
 // Enable explicitly when needed.

@@ -17,7 +17,14 @@
     "server:install": "npm --prefix server ci",
     "server:dev": "npm --prefix server run dev",
     "server:start": "npm --prefix server run start",
+    "server:db:check": "npm --prefix server run db:check",
+    "server:db:up": "npm --prefix server run db:up",
+    "server:db:down": "npm --prefix server run db:down",
     "server:db:init": "npm --prefix server run db:init",
+    "db:check": "npm run server:db:check",
+    "db:up": "npm run server:db:up",
+    "db:down": "npm run server:db:down",
+    "db:init": "npm run server:db:init",
     "install:all": "npm ci && npm run server:install"
   },
   "dependencies": {
