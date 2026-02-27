@@ -7,6 +7,7 @@
   # Production-safe frontend defaults
   VITE_ENABLE_DEMO = "0"
   VITE_SHOW_BACKEND_SETTINGS = "0"
+  VITE_SHOW_DEMO_CONTROLS = "0"
   VITE_DEMO_ALLOWED_HOSTS = ""
 
 [[redirects]]
