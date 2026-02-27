@@ -53,6 +53,7 @@ npm run dev
 ## Troubleshooting
 - Frontend shows “Backend unreachable”: confirm server is running and `VITE_API_BASE` points to it.
 - Browser requests fail with 403 `forbidden`: add the frontend origin to `APP_ALLOWED_ORIGINS` (or set `APP_URL` to the correct host).
+  - Origins are normalized server-side (`https://app.example.com` and `https://app.example.com/` are treated the same).
 - If the backend is up but DB isn’t:
   - `/api/health` returns `db_not_configured` → set `DATABASE_URL` in `server/.env`
   - `/api/health` returns `db_unreachable` → Postgres isn’t reachable at `DATABASE_URL`

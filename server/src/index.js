@@ -31,13 +31,29 @@ if (isProd) {
 const app = express();
 const PORT = process.env.PORT || 4000;
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
-const APP_ALLOWED_ORIGINS = [
-  APP_URL,
-  ...(process.env.APP_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean),
-];
+
+const normalizeOrigin = (value) => {
+  const v = String(value || "").trim();
+  if (!v) return "";
+  try {
+    return new URL(v).origin.toLowerCase();
+  } catch {
+    return v.replace(/\/$/, "").toLowerCase();
+  }
+};
+
+const APP_ALLOWED_ORIGINS = new Set(
+  [
+    APP_URL,
+    ...(process.env.APP_ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean),
+  ]
+    .map(normalizeOrigin)
+    .filter(Boolean)
+);
+
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session";
 
@@ -65,7 +81,9 @@ app.use(cors({
   origin: isProd
     ? (origin, cb) => {
         // Allow non-browser requests (no Origin header) and explicitly configured web origins.
-        if (!origin || APP_ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+        if (!origin) return cb(null, true);
+        const normalizedOrigin = normalizeOrigin(origin);
+        if (APP_ALLOWED_ORIGINS.has(normalizedOrigin)) return cb(null, true);
         return cb(new Error("origin_not_allowed"));
       }
     : true,
@@ -431,5 +449,9 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
+  const allowedOrigins = Array.from(APP_ALLOWED_ORIGINS.values());
   console.log(`Shiftway server listening on ${PORT}`);
+  if (isProd) {
+    console.log(`[shiftway-server] Allowed CORS origins: ${allowedOrigins.join(", ") || "(none configured)"}`);
+  }
 });
