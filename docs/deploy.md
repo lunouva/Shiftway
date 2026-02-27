@@ -23,6 +23,8 @@
    - `APP_URL=https://<your-frontend-host>`
    - `JWT_SECRET=...`
    - `SESSION_SECRET=...`
+   - `DATABASE_URL=postgres://...`
+   - Optional hardening: `TRUST_PROXY=1` when behind multiple reverse proxies
 3) Install + init DB:
    ```bash
    cd server
@@ -72,3 +74,15 @@ For an internal demo deployment, set all three intentionally:
    curl -sSf https://<your-backend-host>/api/health
    ```
 3) Confirm the frontend is pointed to the backend host (`VITE_API_BASE`).
+
+
+### Backend startup smoke test
+After deploying, run this once from your terminal:
+```bash
+curl -sS https://<your-backend-host>/api/health
+```
+Expected response includes:
+- `ok: true`
+- `db: true`
+
+If `db` is false, re-check `DATABASE_URL` and network access from app host to Postgres.

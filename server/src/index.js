@@ -59,7 +59,8 @@ app.use(express.json({ limit: "2mb" }));
 
 if (isProd) {
   // Needed for secure cookies behind typical reverse proxies (Render/Fly/Heroku/Nginx).
-  app.set("trust proxy", 1);
+  // Allow override for multi-hop proxy setups (e.g., Cloudflare -> Render).
+  app.set("trust proxy", Number(process.env.TRUST_PROXY || 1));
 }
 
 app.use(session({

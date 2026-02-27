@@ -231,6 +231,10 @@ const friendlyApiError = (code) => {
     invalid_user: "Your account could not be found. Please sign in again.",
     not_found: "That item no longer exists.",
     forbidden: "You don't have permission to do that.",
+    missing_data: "Nothing to save yet. Refresh and try again.",
+    missing_recipients: "Select at least one recipient before sending a notification.",
+    missing_subscription: "Push subscription is missing. Re-enable notifications and try again.",
+    internal_error: "The server hit an unexpected error. Please retry in a moment.",
     db_not_configured: "Backend is running, but database configuration is missing.",
     db_unreachable: "Backend is running, but it cannot reach the database.",
   };
@@ -290,6 +294,9 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
     }
     if (res.status === 403) {
       throw new Error(msg || "You don't have permission to do that.");
+    }
+    if (res.status === 429) {
+      throw new Error(msg || "Too many requests. Please wait a moment and try again.");
     }
     if (res.status >= 500) {
       throw new Error(msg || "Server error. Please try again in a moment.");
