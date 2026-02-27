@@ -31,6 +31,7 @@ A ready-to-import Render blueprint now exists at repo root: `render.yaml`.
    - Optional hardening: `TRUST_PROXY=1` when behind multiple reverse proxies
    - Optional DB tuning for production: `DB_POOL_MAX`, `DB_CONNECT_TIMEOUT_MS`, `DB_IDLE_TIMEOUT_MS`, and `DB_SSL=require` (for managed Postgres with TLS)
    - Production preflight enforces secure URL config: `APP_URL` should be `https://...`, and `APP_ALLOWED_ORIGINS` entries should also be `https://...` (localhost is the only exception).
+  - `APP_URL` and each `APP_ALLOWED_ORIGINS` value must be an **origin only** (no path/query/hash, e.g. `https://app.shiftway.com` not `https://app.shiftway.com/login`). Duplicated origins in `APP_ALLOWED_ORIGINS` are rejected.
 3) Install + preflight + init DB:
    ```bash
    cd server
