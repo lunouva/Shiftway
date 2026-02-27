@@ -9,12 +9,15 @@ This repo is intentionally lightweight; this checklist is here to make a "v0.1" 
 
 ## Local quality gates (run before tagging)
 ```bash
-# CI-like check (frontend build + server install)
+# CI-like check (frontend build + server checks)
 npm run ci
-# (alias: npm run check)
+
+# Final-product readiness sweep (CI + backend preflight + DB prerequisite probe)
+npm run final:check
 ```
 
-This check now includes a deploy guard that fails if `netlify.toml` enables demo/internal-only UI controls in production.
+`npm run ci` includes a deploy guard that fails if `netlify.toml` enables demo/internal-only UI controls in production.
+`npm run final:check` is the quickest single command to validate final-product prerequisites before release work.
 
 Optional (recommended) smoke checks:
 - Frontend loads (production build) and basic navigation works.
@@ -40,6 +43,12 @@ If `npm run db:init` fails with `ECONNREFUSED 127.0.0.1:5432`:
 - point `DATABASE_URL` at a reachable Postgres instance.
 - if Postgres is starting slowly, increase init retries temporarily:
   `DB_INIT_RETRIES=30 DB_INIT_RETRY_DELAY_MS=1000 npm run db:init`
+
+## Final-product DONE criteria quick check
+- Demo controls are hidden by default (no user-facing Demo/Live toggle in normal flow).
+- Live mode is default.
+- `npm run final:check` passes.
+- `npm run db:init` succeeds against a reachable Postgres instance.
 
 ## Frontend env sanity
 - `VITE_API_BASE` should point at the server (defaults to `http://localhost:4000`).
