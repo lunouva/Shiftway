@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test": "npm run check",
     "ci": "npm run check",
-    "check": "npm run build && npm --prefix server run ci",
+    "check": "node scripts/verify-deploy-config.js && npm run build && npm --prefix server run ci",
     "server:install": "npm --prefix server ci",
     "server:dev": "npm --prefix server run dev",
     "server:start": "npm --prefix server run start",

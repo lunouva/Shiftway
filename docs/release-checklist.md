@@ -14,6 +14,8 @@ npm run ci
 # (alias: npm run check)
 ```
 
+This check now includes a deploy guard that fails if `netlify.toml` enables demo/internal-only UI controls in production.
+
 Optional (recommended) smoke checks:
 - Frontend loads (production build) and basic navigation works.
 - Live mode can:
