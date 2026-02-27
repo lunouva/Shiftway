@@ -76,24 +76,14 @@ For an internal demo deployment, set all three intentionally:
 
 ## Post-deploy verification
 1) Open the frontend and verify login does **not** show demo credentials.
-2) Check API health:
+2) Run backend health smoke (expects `ok: true` + `db: true`):
    ```bash
-   curl -sSf https://<your-backend-host>/api/health
+   cd server
+   npm run smoke:health -- https://<your-backend-host>/api/health
    ```
 3) Confirm the frontend is pointed to the backend host (`VITE_API_BASE`).
 
-
-### Backend startup smoke test
-After deploying, run this once from your terminal:
-```bash
-curl -sS https://<your-backend-host>/api/health
-```
-Expected response includes:
-- `ok: true`
-- `db: true`
-
-If `db` is false, re-check `DATABASE_URL` and network access from app host to Postgres.
-
+If smoke health fails, re-check `DATABASE_URL` and network access from app host to Postgres.
 
 ## Backend preflight
 Before cutting production, run:

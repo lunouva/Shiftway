@@ -25,7 +25,8 @@
     "db:up": "npm run server:db:up",
     "db:down": "npm run server:db:down",
     "db:init": "npm run server:db:init",
-    "install:all": "npm ci && npm run server:install"
+    "install:all": "npm ci && npm run server:install",
+    "server:smoke:health": "npm --prefix server run smoke:health"
   },
   "dependencies": {
     "react": "^18.2.0",

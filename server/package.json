@@ -15,7 +15,8 @@
     "db:init": "node scripts/init_db.js",
     "db:check": "node scripts/check_prereqs.js",
     "ci": "node --check src/index.js && node --check src/db.js && node --check scripts/init_db.js && node --check scripts/db_up.js && node --check scripts/db_down.js && node --check scripts/check_prereqs.js && node --check scripts/preflight.js",
-    "preflight": "node scripts/preflight.js"
+    "preflight": "node scripts/preflight.js",
+    "smoke:health": "node scripts/smoke_health.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
