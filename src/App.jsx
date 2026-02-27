@@ -228,6 +228,7 @@ const friendlyApiError = (code) => {
     invalid_credentials: "Invalid email or password.",
     missing_token: "Your session is missing. Please sign in again.",
     invalid_token: "Your login link or session is no longer valid. Please sign in again.",
+    token_expired: "Your session expired. Please sign in again.",
     invalid_user: "Your account could not be found. Please sign in again.",
     not_found: "That item no longer exists.",
     forbidden: "You don't have permission to do that.",
