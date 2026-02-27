@@ -9,6 +9,7 @@
   VITE_SHOW_BACKEND_SETTINGS = "0"
   VITE_SHOW_DEMO_CONTROLS = "0"
   VITE_DEMO_ALLOWED_HOSTS = ""
+  VITE_API_BASE = "https://api.shiftway.app"  # set to your live backend origin
 
 [[redirects]]
   from = "/*"

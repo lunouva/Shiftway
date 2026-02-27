@@ -24,7 +24,7 @@ npm run dev
 
 - The frontend uses `VITE_API_BASE`.
   - Local dev default: `http://localhost:4000`
-  - Deployed default: same-origin (recommended to set `VITE_API_BASE` explicitly)
+  - Production deploys: set `VITE_API_BASE` to your backend origin (required by the deploy guard)
 
 ## Backend
 

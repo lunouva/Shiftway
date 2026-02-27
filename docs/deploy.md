@@ -7,6 +7,7 @@
 ## Frontend
 1) Set env var:
    - `VITE_API_BASE=https://<your-backend-host>`
+   - Netlify deploy guard (`npm run ci`) now requires `VITE_API_BASE` in `netlify.toml` `[build.environment]` and rejects localhost values.
 2) Build:
    ```bash
    npm ci
