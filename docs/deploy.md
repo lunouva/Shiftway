@@ -26,10 +26,11 @@
    - `SESSION_SECRET=...`
    - `DATABASE_URL=postgres://...`
    - Optional hardening: `TRUST_PROXY=1` when behind multiple reverse proxies
-3) Install + init DB:
+3) Install + preflight + init DB:
    ```bash
    cd server
    npm ci
+   npm run preflight
    npm run db:init
    npm start
    ```
@@ -89,3 +90,12 @@ Expected response includes:
 - `db: true`
 
 If `db` is false, re-check `DATABASE_URL` and network access from app host to Postgres.
+
+
+## Backend preflight
+Before cutting production, run:
+```bash
+cd server
+npm run preflight
+```
+This validates required env vars and confirms Postgres connectivity.

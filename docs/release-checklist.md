@@ -27,6 +27,7 @@ cd server
 cp .env.example .env
 npm ci
 npm run db:check
+npm run preflight
 npm run db:init
 npm run start
 ```
