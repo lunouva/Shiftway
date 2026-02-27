@@ -20,7 +20,8 @@
 2) Set required server env vars:
    - `NODE_ENV=production`
    - `PORT=4000` (or platform-provided)
-   - `APP_URL=https://<your-frontend-host>`
+   - `APP_URL=https://<your-primary-frontend-host>`
+   - `APP_ALLOWED_ORIGINS=https://<optional-preview-host>,https://<optional-admin-host>`
    - `JWT_SECRET=...`
    - `SESSION_SECRET=...`
    - `DATABASE_URL=postgres://...`
@@ -51,6 +52,7 @@ npm run dev
 
 ## Troubleshooting
 - Frontend shows “Backend unreachable”: confirm server is running and `VITE_API_BASE` points to it.
+- Browser requests fail with 403 `forbidden`: add the frontend origin to `APP_ALLOWED_ORIGINS` (or set `APP_URL` to the correct host).
 - If the backend is up but DB isn’t:
   - `/api/health` returns `db_not_configured` → set `DATABASE_URL` in `server/.env`
   - `/api/health` returns `db_unreachable` → Postgres isn’t reachable at `DATABASE_URL`
