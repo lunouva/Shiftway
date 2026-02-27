@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
+import net from "node:net";
+import dotenv from "dotenv";
+import path from "node:path";
+
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 function has(cmd) {
   try {
@@ -10,16 +15,59 @@ function has(cmd) {
   }
 }
 
+function parseDbTarget(connectionString) {
+  if (!connectionString) return null;
+  try {
+    const url = new URL(connectionString);
+    const host = url.hostname;
+    const port = Number(url.port || 5432);
+    if (!host || !Number.isFinite(port) || port <= 0) return null;
+    return { host, port };
+  } catch {
+    return null;
+  }
+}
+
+function checkTcp({ host, port }, timeoutMs = 2500) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host, port });
+    let settled = false;
+
+    const finish = (ok, reason = "") => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve({ ok, reason });
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.on("connect", () => finish(true));
+    socket.on("timeout", () => finish(false, "timeout"));
+    socket.on("error", (err) => finish(false, err?.code || err?.message || "error"));
+  });
+}
+
 const docker = has("docker");
 const dockerCompose = has("docker-compose");
 const psql = has("psql");
 const hasCompose = docker || dockerCompose;
+const databaseUrl = process.env.DATABASE_URL || "";
+const dbTarget = parseDbTarget(databaseUrl);
 
 console.log("Shiftway DB prerequisites check");
 console.log(`- docker: ${docker ? "yes" : "no"}`);
 console.log(`- docker-compose: ${dockerCompose ? "yes" : "no"}`);
 console.log(`- psql:   ${psql ? "yes" : "no"}`);
-console.log(`- DATABASE_URL in env: ${process.env.DATABASE_URL ? "yes" : "no"}`);
+console.log(`- DATABASE_URL in env: ${databaseUrl ? "yes" : "no"}`);
+
+let reach = null;
+if (dbTarget) {
+  reach = await checkTcp(dbTarget);
+  console.log(`- DATABASE_URL host reachable (${dbTarget.host}:${dbTarget.port}): ${reach.ok ? "yes" : `no (${reach.reason})`}`);
+} else if (databaseUrl) {
+  console.log("- DATABASE_URL parseable: no");
+}
+
 console.log("");
 
 if (hasCompose) {
@@ -36,9 +84,16 @@ if (psql) {
   process.exit(0);
 }
 
+if (reach?.ok) {
+  console.log("No local Docker/psql detected, but DATABASE_URL is reachable.");
+  console.log("You can proceed with:");
+  console.log("  npm run db:init");
+  process.exit(0);
+}
+
 console.error("Neither Docker Compose nor psql were found.");
 console.error("To run the Live backend locally you need a reachable Postgres instance.");
-if (!process.env.DATABASE_URL) {
+if (!databaseUrl) {
   console.error("Also: DATABASE_URL is not set in the environment.");
   console.error("Create server/.env from server/.env.example and set DATABASE_URL.");
 }
