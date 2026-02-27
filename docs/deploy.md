@@ -32,9 +32,11 @@
    cd server
    npm ci
    npm run preflight
+   npm run db:check
    npm run db:init
    npm start
    ```
+   If `npm run db:init` fails with `ECONNREFUSED`, Postgres is not reachable from the app host yet. Re-check `DATABASE_URL`, network rules, and DB availability before retrying.
 
 ## Local dev (recommended)
 Bring up Postgres:

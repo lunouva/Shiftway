@@ -317,14 +317,16 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
     }
     if (res.status === 429) {
       const retryHint = formatRetryAfter(res.headers.get("retry-after"));
-      throw new Error(msg || `Too many requests. Please wait a moment and try again.${retryHint}`);
+      const detail = msg || "Too many requests. Please wait a moment and try again.";
+      throw new Error(`${detail}${retryHint}`);
     }
     if (res.status === 502) {
       throw new Error(msg || "Upstream backend error (502). Please retry in a moment.");
     }
     if (res.status === 503) {
       const retryHint = formatRetryAfter(res.headers.get("retry-after"));
-      throw new Error(msg || `Backend is temporarily unavailable (503). Please retry in a moment.${retryHint}`);
+      const detail = msg || "Backend is temporarily unavailable (503). Please retry in a moment.";
+      throw new Error(`${detail}${retryHint}`);
     }
     if (res.status === 504) {
       throw new Error(msg || "Backend timed out (504). Please retry in a moment.");
@@ -334,6 +336,11 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
     }
     if (res.status === 404) {
       throw new Error(msg || "That item no longer exists or the endpoint was not found.");
+    }
+
+    const requestId = res.headers.get("x-request-id") || res.headers.get("x-correlation-id");
+    if (requestId) {
+      throw new Error(msg ? `${prefix}: ${msg} (request id: ${requestId})` : `${prefix} (request id: ${requestId})`);
     }
 
     throw new Error(msg ? `${prefix}: ${msg}` : prefix);
