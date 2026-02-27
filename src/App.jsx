@@ -245,6 +245,22 @@ const friendlyApiError = (code) => {
   return map[String(code || "").toLowerCase()] || "";
 };
 
+const formatRetryAfter = (retryAfterHeader) => {
+  if (!retryAfterHeader) return "";
+  const asSeconds = Number(retryAfterHeader);
+  if (Number.isFinite(asSeconds) && asSeconds > 0) {
+    return ` Try again in about ${Math.max(1, Math.round(asSeconds))}s.`;
+  }
+
+  const at = new Date(retryAfterHeader);
+  if (Number.isFinite(at.getTime())) {
+    const seconds = Math.round((at.getTime() - Date.now()) / 1000);
+    if (seconds > 0) return ` Try again in about ${seconds}s.`;
+  }
+
+  return "";
+};
+
 const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 } = {}, clientSettings) => {
   const apiBase = getApiBase(clientSettings).replace(/\/$/, "");
   let res;
@@ -300,13 +316,15 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
       throw new Error(msg || "You don't have permission to do that.");
     }
     if (res.status === 429) {
-      throw new Error(msg || "Too many requests. Please wait a moment and try again.");
+      const retryHint = formatRetryAfter(res.headers.get("retry-after"));
+      throw new Error(msg || `Too many requests. Please wait a moment and try again.${retryHint}`);
     }
     if (res.status === 502) {
       throw new Error(msg || "Upstream backend error (502). Please retry in a moment.");
     }
     if (res.status === 503) {
-      throw new Error(msg || "Backend is temporarily unavailable (503). Please retry in a moment.");
+      const retryHint = formatRetryAfter(res.headers.get("retry-after"));
+      throw new Error(msg || `Backend is temporarily unavailable (503). Please retry in a moment.${retryHint}`);
     }
     if (res.status === 504) {
       throw new Error(msg || "Backend timed out (504). Please retry in a moment.");
