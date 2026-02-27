@@ -3,6 +3,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import pg from "pg";
 import dotenv from "dotenv";
+import net from "node:net";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -54,6 +55,63 @@ async function retryConnectAndInit({ attempts = RETRY_ATTEMPTS, delayMs = RETRY_
   return false;
 }
 
+function hasCommand(cmd) {
+  try {
+    execSync(`command -v ${cmd}`, { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getDbEndpoint() {
+  try {
+    const parsed = new URL(connectionString);
+    const host = parsed.hostname || "127.0.0.1";
+    const port = Number(parsed.port || 5432);
+    if (!Number.isFinite(port) || port <= 0) return null;
+    return { host, port };
+  } catch {
+    return null;
+  }
+}
+
+async function isTcpReachable(host, port, timeoutMs = 500) {
+  return await new Promise((resolve) => {
+    const socket = new net.Socket();
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      socket.destroy();
+      resolve(ok);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => finish(true));
+    socket.once("timeout", () => finish(false));
+    socket.once("error", () => finish(false));
+    socket.connect(port, host);
+  });
+}
+
+async function maybeFastFailMissingDb() {
+  const endpoint = getDbEndpoint();
+  if (!endpoint) return false;
+
+  const reachable = await isTcpReachable(endpoint.host, endpoint.port, 500);
+  if (reachable) return false;
+
+  const hasDocker = hasCommand("docker") || hasCommand("docker-compose");
+  const hasPsql = hasCommand("psql");
+
+  if (hasDocker || hasPsql) return false;
+
+  console.error(`Cannot reach Postgres at ${endpoint.host}:${endpoint.port}.`);
+  console.error("No Docker/Compose or psql detected, so db:init cannot auto-recover on this machine.");
+  runPrereqCheck();
+  return true;
+}
+
 function runPrereqCheck() {
   if (prereqChecked) return;
   prereqChecked = true;
@@ -78,11 +136,16 @@ function getComposeRunner() {
 }
 
 try {
-  await retryConnectAndInit({
-    onRetry: (attempt, attempts, delayMs) => {
-      console.error(`Postgres not ready yet (attempt ${attempt}/${attempts}); retrying in ${delayMs}ms...`);
-    },
-  });
+  const fastFailed = await maybeFastFailMissingDb();
+  if (fastFailed) {
+    process.exitCode = 1;
+  } else {
+    await retryConnectAndInit({
+      onRetry: (attempt, attempts, delayMs) => {
+        console.error(`Postgres not ready yet (attempt ${attempt}/${attempts}); retrying in ${delayMs}ms...`);
+      },
+    });
+  }
 } catch (err) {
   let recovered = false;
 
