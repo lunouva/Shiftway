@@ -52,3 +52,16 @@ npm run dev
 - If the backend is up but DB isn’t:
   - `/api/health` returns `db_not_configured` → set `DATABASE_URL` in `server/.env`
   - `/api/health` returns `db_unreachable` → Postgres isn’t reachable at `DATABASE_URL`
+
+## Production hardening flags
+Set these on your frontend build:
+- `VITE_ENABLE_DEMO=0` (or unset): hides demo-only boot path by default
+- `VITE_SHOW_BACKEND_SETTINGS=0` (or unset): keeps backend-mode controls out of the UI
+
+## Post-deploy verification
+1) Open the frontend and verify login does **not** show demo credentials.
+2) Check API health:
+   ```bash
+   curl -sSf https://<your-backend-host>/api/health
+   ```
+3) Confirm the frontend is pointed to the backend host (`VITE_API_BASE`).

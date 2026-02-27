@@ -255,9 +255,21 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
     }
 
     const prefix = `Request failed (${res.status}${res.statusText ? ` ${res.statusText}` : ""})`;
+
+    // Give users actionable, human-readable failures in Live mode.
     if (res.status === 401) {
       throw new Error(msg || "Session expired. Please log in again.");
     }
+    if (res.status === 403) {
+      throw new Error(msg || "You don't have permission to do that.");
+    }
+    if (res.status >= 500) {
+      throw new Error(msg || "Server error. Please try again in a moment.");
+    }
+    if (res.status === 404) {
+      throw new Error(msg || "That item no longer exists or the endpoint was not found.");
+    }
+
     throw new Error(msg ? `${prefix}: ${msg}` : prefix);
   }
 
