@@ -239,6 +239,8 @@ const friendlyApiError = (code) => {
     service_unavailable: "The backend is temporarily unavailable. Please retry in a moment.",
     bad_gateway: "The backend is temporarily unavailable behind a proxy. Please retry in a moment.",
     gateway_timeout: "The backend took too long to respond. Please retry in a moment.",
+    invalid_json: "The server could not read that request. Please refresh and try again.",
+    payload_too_large: "That request is too large. Try a smaller upload or shorter message.",
     db_not_configured: "Backend is running, but database configuration is missing.",
     db_unreachable: "Backend is running, but it cannot reach the database.",
   };
@@ -338,6 +340,9 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
     }
     if (res.status === 404) {
       throw new Error(withRequestId(msg || "That item no longer exists or the endpoint was not found."));
+    }
+    if (res.status === 413) {
+      throw new Error(withRequestId(msg || "Request payload is too large. Try again with a smaller request."));
     }
 
     throw new Error(withRequestId(msg ? `${prefix}: ${msg}` : prefix));
