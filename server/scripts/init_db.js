@@ -40,6 +40,8 @@ async function tryConnectAndInit() {
 try {
   await tryConnectAndInit();
 } catch (err) {
+  let recovered = false;
+
   // Common local dev failure: DB isn't running yet.
   if (err && typeof err === "object" && err.code === "ECONNREFUSED") {
     console.error("Could not connect to Postgres (connection refused). Is your DB running?");
@@ -50,21 +52,18 @@ try {
         console.error("Attempting to start Postgres via Docker Compose...");
         execSync("docker compose -f docker-compose.yml up -d", { stdio: "inherit" });
         // Give Postgres a moment to accept connections.
-        let ok = false;
         for (let i = 0; i < 10; i++) {
           try {
             await sleep(1000);
             await tryConnectAndInit();
-            ok = true;
+            recovered = true;
             break;
           } catch (e2) {
             if (e2 && typeof e2 === "object" && e2.code === "ECONNREFUSED") continue;
             throw e2;
           }
         }
-        if (ok) {
-          process.exitCode = 0;
-        } else {
+        if (!recovered) {
           console.error("Postgres started but is still not accepting connections (timeout). Try again in a few seconds.");
           console.error("If needed: npm run db:up && npm run db:init");
         }
@@ -84,8 +83,10 @@ try {
     }
   }
 
-  console.error(err);
-  process.exitCode = 1;
+  if (!recovered) {
+    console.error(err);
+    process.exitCode = 1;
+  }
 } finally {
   await client.end();
 }
