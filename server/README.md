@@ -42,3 +42,11 @@ Minimum required for local dev:
 
 - The frontend points at the Live API via `VITE_API_BASE` (Live is the default).
 - Internal demo mode (no backend) is gated by the frontend build flag `VITE_ENABLE_DEMO=1` and activated with `?demo=1`.
+
+## Health and error signals
+
+- `GET /api/health` returns:
+  - `200 { ok: true, db: true }` when API + DB are healthy
+  - `500 { error: "db_not_configured" }` when `DATABASE_URL` is missing
+  - `500 { error: "db_unreachable" }` when DB cannot be reached
+- Other API routes now also return `503` with `error: "db_not_configured"` or `error: "db_unreachable"` when infrastructure is the failure point, so the frontend can show actionable Live-mode guidance.

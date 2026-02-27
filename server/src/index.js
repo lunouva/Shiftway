@@ -447,6 +447,26 @@ app.use((err, req, res, next) => {
     return res.status(403).json({ error: "forbidden", message: "Request origin is not allowed by CORS." });
   }
 
+  // Surface infrastructure failures with stable, client-friendly codes.
+  // This keeps Live mode actionable when the API is up but DB wiring is not.
+  const rawMessage = String(err?.message || "");
+  const dbConfigMissing = rawMessage.includes("Missing DATABASE_URL");
+  const dbUnreachable = err?.code === "ECONNREFUSED" || rawMessage.includes("connect ECONNREFUSED") || rawMessage.includes("getaddrinfo ENOTFOUND");
+
+  if (dbConfigMissing) {
+    return res.status(503).json({
+      error: "db_not_configured",
+      message: "Database is not configured on the backend.",
+    });
+  }
+
+  if (dbUnreachable) {
+    return res.status(503).json({
+      error: "db_unreachable",
+      message: "Database is unreachable from the backend.",
+    });
+  }
+
   const message = isProd ? "Internal server error" : (err?.message || "Internal server error");
   res.status(500).json({ error: "internal_error", message });
 });
