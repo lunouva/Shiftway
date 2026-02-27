@@ -34,6 +34,26 @@ const APP_URL = process.env.APP_URL || "http://localhost:5173";
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session";
 
+// Express 4 does not natively forward rejected promises from async handlers.
+// Wrap route handlers so async throw/rejections are consistently surfaced.
+const wrapAsync = (handler) => {
+  if (typeof handler !== "function") return handler;
+  if (handler.length === 4) return handler; // keep error middleware untouched
+  return (req, res, next) => {
+    try {
+      const out = handler(req, res, next);
+      if (out && typeof out.then === "function") out.catch(next);
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+for (const method of ["get", "post", "put", "patch", "delete"]) {
+  const original = app[method].bind(app);
+  app[method] = (path, ...handlers) => original(path, ...handlers.map(wrapAsync));
+}
+
 app.use(cors({ origin: isProd ? APP_URL : true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
@@ -194,13 +214,14 @@ const sendPush = async ({ subscriptions, title, body }) => {
 };
 
 app.get("/api/health", async (req, res) => {
+  const diagnostics = { env: process.env.NODE_ENV || "development", timestamp: new Date().toISOString() };
   try {
     await query("SELECT 1 as ok");
-    res.json({ ok: true, db: true });
+    res.json({ ok: true, db: true, ...diagnostics });
   } catch (err) {
     const msg = String(err?.message || "");
     const error = msg.includes("Missing DATABASE_URL") ? "db_not_configured" : "db_unreachable";
-    res.status(500).json({ ok: false, db: false, error });
+    res.status(500).json({ ok: false, db: false, error, ...diagnostics });
   }
 });
 
@@ -379,6 +400,13 @@ function sanitizeUser(user) {
   const { password_hash, ...rest } = user;
   return rest;
 }
+
+app.use((err, req, res, next) => {
+  console.error("[shiftway-server] Unhandled route error", err);
+  if (res.headersSent) return next(err);
+  const message = isProd ? "Internal server error" : (err?.message || "Internal server error");
+  res.status(500).json({ error: "internal_error", message });
+});
 
 app.listen(PORT, () => {
   console.log(`Shiftway server listening on ${PORT}`);
