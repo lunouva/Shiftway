@@ -16,6 +16,8 @@
 3) Deploy `dist/` to your static host.
 
 ## Backend
+A ready-to-import Render blueprint now exists at repo root: `render.yaml`.
+
 1) Provision Postgres and set:
    - `DATABASE_URL=postgres://...`
 2) Set required server env vars:
