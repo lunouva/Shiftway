@@ -26,6 +26,7 @@
    - `SESSION_SECRET=...`
    - `DATABASE_URL=postgres://...`
    - Optional hardening: `TRUST_PROXY=1` when behind multiple reverse proxies
+   - Production preflight enforces secure URL config: `APP_URL` should be `https://...`, and `APP_ALLOWED_ORIGINS` entries should also be `https://...` (localhost is the only exception).
 3) Install + preflight + init DB:
    ```bash
    cd server

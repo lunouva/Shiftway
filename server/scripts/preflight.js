@@ -37,18 +37,42 @@ const parseOrigins = () => {
 
 const verifyUrlLike = (value, label) => {
   try {
-    new URL(value);
-    return true;
+    const parsed = new URL(value);
+    if (!/^https?:$/.test(parsed.protocol)) {
+      console.error(`[preflight] ${label} must use http:// or https://. Got: ${value}`);
+      return null;
+    }
+    return parsed;
   } catch {
     console.error(`[preflight] ${label} must be a valid URL. Got: ${value}`);
-    return false;
+    return null;
   }
 };
 
+const isLocalHost = (hostname) => {
+  const h = String(hostname || "").toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "::1";
+};
+
 let urlErrors = 0;
-if (process.env.APP_URL && !verifyUrlLike(process.env.APP_URL, "APP_URL")) urlErrors += 1;
+const appUrl = process.env.APP_URL ? verifyUrlLike(process.env.APP_URL, "APP_URL") : null;
+if (process.env.APP_URL && !appUrl) urlErrors += 1;
+
+if (isProd && appUrl && appUrl.protocol !== "https:") {
+  console.error(`[preflight] APP_URL should use https:// in production. Got: ${process.env.APP_URL}`);
+  urlErrors += 1;
+}
+
 for (const origin of parseOrigins()) {
-  if (!verifyUrlLike(origin, "APP_ALLOWED_ORIGINS entry")) urlErrors += 1;
+  const parsed = verifyUrlLike(origin, "APP_ALLOWED_ORIGINS entry");
+  if (!parsed) {
+    urlErrors += 1;
+    continue;
+  }
+  if (isProd && parsed.protocol !== "https:" && !isLocalHost(parsed.hostname)) {
+    console.error(`[preflight] APP_ALLOWED_ORIGINS should use https:// in production (except localhost). Got: ${origin}`);
+    urlErrors += 1;
+  }
 }
 if (urlErrors > 0) process.exit(1);
 
