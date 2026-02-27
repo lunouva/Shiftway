@@ -287,6 +287,8 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
 
   const ct = res.headers.get("content-type") || "";
   const isJson = ct.includes("application/json");
+  const requestId = res.headers.get("x-request-id") || res.headers.get("x-correlation-id");
+  const withRequestId = (text) => requestId ? `${text} (request id: ${requestId})` : text;
 
   if (!res.ok) {
     // If auth expired, clear local token so the UI can return to login cleanly.
@@ -310,40 +312,35 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
 
     // Give users actionable, human-readable failures in Live mode.
     if (res.status === 401) {
-      throw new Error(msg || "Session expired. Please log in again.");
+      throw new Error(withRequestId(msg || "Session expired. Please log in again."));
     }
     if (res.status === 403) {
-      throw new Error(msg || "You don't have permission to do that.");
+      throw new Error(withRequestId(msg || "You don't have permission to do that."));
     }
     if (res.status === 429) {
       const retryHint = formatRetryAfter(res.headers.get("retry-after"));
       const detail = msg || "Too many requests. Please wait a moment and try again.";
-      throw new Error(`${detail}${retryHint}`);
+      throw new Error(withRequestId(`${detail}${retryHint}`));
     }
     if (res.status === 502) {
-      throw new Error(msg || "Upstream backend error (502). Please retry in a moment.");
+      throw new Error(withRequestId(msg || "Upstream backend error (502). Please retry in a moment."));
     }
     if (res.status === 503) {
       const retryHint = formatRetryAfter(res.headers.get("retry-after"));
       const detail = msg || "Backend is temporarily unavailable (503). Please retry in a moment.";
-      throw new Error(`${detail}${retryHint}`);
+      throw new Error(withRequestId(`${detail}${retryHint}`));
     }
     if (res.status === 504) {
-      throw new Error(msg || "Backend timed out (504). Please retry in a moment.");
+      throw new Error(withRequestId(msg || "Backend timed out (504). Please retry in a moment."));
     }
     if (res.status >= 500) {
-      throw new Error(msg || "Server error. Please try again in a moment.");
+      throw new Error(withRequestId(msg || "Server error. Please try again in a moment."));
     }
     if (res.status === 404) {
-      throw new Error(msg || "That item no longer exists or the endpoint was not found.");
+      throw new Error(withRequestId(msg || "That item no longer exists or the endpoint was not found."));
     }
 
-    const requestId = res.headers.get("x-request-id") || res.headers.get("x-correlation-id");
-    if (requestId) {
-      throw new Error(msg ? `${prefix}: ${msg} (request id: ${requestId})` : `${prefix} (request id: ${requestId})`);
-    }
-
-    throw new Error(msg ? `${prefix}: ${msg}` : prefix);
+    throw new Error(withRequestId(msg ? `${prefix}: ${msg}` : prefix));
   }
 
   if (!isJson) return null;
@@ -351,7 +348,7 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
   try {
     return await res.json();
   } catch {
-    throw new Error("Backend returned malformed JSON. Check server logs and retry.");
+    throw new Error(withRequestId("Backend returned malformed JSON. Check server logs and retry."));
   }
 };
 

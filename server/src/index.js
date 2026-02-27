@@ -91,6 +91,14 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "2mb" }));
 
+app.use((req, res, next) => {
+  const incoming = String(req.headers["x-request-id"] || "").trim();
+  const requestId = incoming || crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader("x-request-id", requestId);
+  next();
+});
+
 if (isProd) {
   // Needed for secure cookies behind typical reverse proxies (Render/Fly/Heroku/Nginx).
   // Allow override for multi-hop proxy setups (e.g., Cloudflare -> Render).
@@ -444,7 +452,7 @@ app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
 
   if (err?.message === "origin_not_allowed") {
-    return res.status(403).json({ error: "forbidden", message: "Request origin is not allowed by CORS." });
+    return res.status(403).json({ error: "forbidden", message: "Request origin is not allowed by CORS.", requestId: req.requestId });
   }
 
   // Surface infrastructure failures with stable, client-friendly codes.
@@ -457,6 +465,7 @@ app.use((err, req, res, next) => {
     return res.status(503).json({
       error: "db_not_configured",
       message: "Database is not configured on the backend.",
+      requestId: req.requestId,
     });
   }
 
@@ -464,11 +473,12 @@ app.use((err, req, res, next) => {
     return res.status(503).json({
       error: "db_unreachable",
       message: "Database is unreachable from the backend.",
+      requestId: req.requestId,
     });
   }
 
   const message = isProd ? "Internal server error" : (err?.message || "Internal server error");
-  res.status(500).json({ error: "internal_error", message });
+  res.status(500).json({ error: "internal_error", message, requestId: req.requestId });
 });
 
 app.listen(PORT, () => {
