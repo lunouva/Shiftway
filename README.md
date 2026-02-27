@@ -44,6 +44,11 @@ npm run db:init
 npm run dev
 ```
 
+Smoke-check the backend once it is running:
+```bash
+curl -sSf http://localhost:4000/api/health
+```
+
 Server env vars are documented in `server/.env.example`.
 
 ## Release checklist
@@ -54,7 +59,7 @@ See `docs/release-checklist.md`.
 
 There’s a ready-to-copy workflow at `docs/github-actions-ci.yml`.
 
-Local CI-like check (frontend build + server install):
+Local CI-like check (frontend build + server syntax checks):
 ```bash
 npm run ci
 # (alias: npm run check)

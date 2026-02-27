@@ -218,6 +218,23 @@ const getApiBase = (clientSettings) => {
   return window.location.origin;
 };
 
+const friendlyApiError = (code) => {
+  const map = {
+    missing_fields: "Please fill in all required fields.",
+    missing_email: "Please enter an email address.",
+    email_in_use: "That email is already in use. Try signing in instead.",
+    invalid_credentials: "Invalid email or password.",
+    missing_token: "Your session is missing. Please sign in again.",
+    invalid_token: "Your login link or session is no longer valid. Please sign in again.",
+    invalid_user: "Your account could not be found. Please sign in again.",
+    not_found: "That item no longer exists.",
+    forbidden: "You don't have permission to do that.",
+    db_not_configured: "Backend is running, but database configuration is missing.",
+    db_unreachable: "Backend is running, but it cannot reach the database.",
+  };
+  return map[String(code || "").toLowerCase()] || "";
+};
+
 const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 } = {}, clientSettings) => {
   const apiBase = getApiBase(clientSettings);
   let res;
@@ -254,7 +271,7 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
     try {
       if (isJson) {
         const j = await res.json();
-        msg = j?.error || j?.message || JSON.stringify(j);
+        msg = friendlyApiError(j?.error) || j?.message || j?.error || JSON.stringify(j);
       } else {
         msg = await res.text();
       }
