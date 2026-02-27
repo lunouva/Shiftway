@@ -27,7 +27,12 @@ async function sleep(ms) {
 }
 
 async function tryConnectAndInit() {
-  const client = new pg.Client({ connectionString });
+  const clientConfig = { connectionString };
+  if (String(process.env.DB_SSL || "").toLowerCase() === "require") {
+    clientConfig.ssl = { rejectUnauthorized: false };
+  }
+
+  const client = new pg.Client(clientConfig);
   try {
     await client.connect();
     await client.query(sql);

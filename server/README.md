@@ -38,6 +38,9 @@ Minimum required for local dev:
 - `PORT` (optional; defaults to 4000)
 - `APP_URL` (used for links/callbacks)
 
+For managed Postgres providers that require TLS, set:
+- `DB_SSL=require` (applies to runtime queries and `npm run db:init`)
+
 ## Notes
 
 - The frontend points at the Live API via `VITE_API_BASE` (Live is the default).
