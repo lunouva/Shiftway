@@ -427,14 +427,14 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
 };
 
 // ---------- small UI bits ----------
-function Section({ title, right, children }) {
+function Section({ title, right, children, flush = false }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-brand-text">{title}</h2>
         <div>{right}</div>
       </div>
-      <div className="rounded-[1.75rem] border border-brand-light bg-white p-6 shadow-sm">{children}</div>
+      <div className={`rounded-[1.75rem] border border-brand-light bg-white shadow-sm ${flush ? "overflow-hidden" : "p-6"}`}>{children}</div>
     </div>
   );
 }
@@ -1817,6 +1817,7 @@ function InnerApp(props) {
 
       {isManager && tab === "schedule" && (
         <Section
+          flush
           title={`Week of ${safeDate(weekStart).toLocaleDateString()}`}
           right={
             schedule ? (
@@ -1828,14 +1829,14 @@ function InnerApp(props) {
             )
           }
         >
-          <div className="mb-4 grid gap-3 md:grid-cols-4">
+          <div className="mb-4 grid gap-3 px-6 pt-6 md:grid-cols-4">
             <SummaryStat label="Total shifts" value={(schedule?.shifts || []).length} />
             <SummaryStat label="Scheduled hours" value={`${totalScheduledHours.toFixed(2)} h`} />
             <SummaryStat label={<span>Estimated labor cost<ProBadge /></span>} value={formatCurrency(totalLaborCost)} onClick={() => openProUpsell("laborCost")} />
             <SummaryStat label="Open shifts" value={openShifts.length} />
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-brand-light bg-brand-lightest p-3 text-sm">
+          <div className="mb-4 mx-6 flex flex-wrap gap-2 rounded-2xl border border-brand-light bg-brand-lightest p-3 text-sm">
             {positions.map((position) => (
               <div key={position.id} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1">
                 <span className={`inline-block h-2.5 w-2.5 rounded-full ${positionColors[position.id]?.dot || "bg-brand"}`} />
@@ -1847,7 +1848,7 @@ function InnerApp(props) {
           {scopedUsers.length === 0 ? (
             <EmptyState icon="🗓" message="Add employees first so you can start building the schedule." />
           ) : (
-            <div className="print-schedule-area -mx-6 -mb-6">
+            <div className="print-schedule-area">
               <WeekGrid
                 employees={scopedUsers}
                 weekDays={weekDays}
