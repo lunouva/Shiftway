@@ -539,6 +539,69 @@ function Modal({ open, onClose, title, children, footer }) {
   );
 }
 
+function HeaderProfileMenu({ open, onClose, user, onEditProfile, onLogout }) {
+  if (!open || !user) return null;
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div className="absolute right-4 top-16 w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-2xl md:right-6 md:top-24" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <AvatarBadge name={user.full_name} className="h-12 w-12" />
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-brand-text">{user.full_name}</div>
+            <div className="truncate text-sm text-brand-text/70">{user.email || "No email on file"}</div>
+          </div>
+        </div>
+        <div className="mt-3 inline-flex rounded-full bg-brand-lightest px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-dark">
+          {user.role}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button className="flex-1 rounded-xl border border-brand bg-white px-3 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={onEditProfile}>
+            Edit Profile
+          </button>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-light" onClick={onLogout}>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProUpsellModal({ feature, onClose }) {
+  if (!feature) return null;
+
+  return (
+    <Modal
+      open={!!feature}
+      onClose={onClose}
+      title={`${feature.title} is a Pro feature`}
+      footer={
+        <>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={onClose}>
+            Maybe later
+          </button>
+          <a className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" href="#upgrade">
+            Upgrade to Pro
+          </a>
+        </>
+      }
+    >
+      <div className="rounded-2xl border border-brand-light bg-brand-lightest/70 p-4">
+        <div className="text-sm font-medium text-brand-text">Unlock {feature.title.toLowerCase()} for smoother manager workflows.</div>
+        <ul className="mt-3 space-y-2 text-sm text-brand-text/80">
+          {feature.benefits.map((benefit) => (
+            <li key={benefit} className="flex items-start gap-2">
+              <span className="mt-0.5 text-brand-dark">•</span>
+              <span>{benefit}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Modal>
+  );
+}
+
 const MANAGER_NAV = [
   { id: "schedule", label: "Schedule", icon: "📅" },
   { id: "employees", label: "Employees", icon: "👥" },
@@ -774,7 +837,7 @@ function WeekGrid({
                                 </div>
                               </div>
                               <div className="flex gap-1 md:opacity-0 md:transition md:group-hover:opacity-100">
-                                {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Swap">🔄</button>}
+                                {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Request swap">⇄</button>}
                                 {onMarkOpen && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onMarkOpen(s.id)} title="Mark open">◌</button>}
                                 <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onDelete(s.id)} title="Delete">✕</button>
                               </div>
@@ -892,7 +955,7 @@ function WeekGrid({
                                     </div>
                                   </div>
                                   <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
-                                    {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Swap">🔄</button>}
+                                    {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Request swap">⇄</button>}
                                     {onMarkOpen && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onMarkOpen(s.id)} title="Mark open">◌</button>}
                                     <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onDelete(s.id)} title="Delete">✕</button>
                                   </div>
@@ -940,7 +1003,7 @@ export default function App() {
   const [weekStart, setWeekStart] = useState(defaultWeekStart);
 
   const [shiftModal, setShiftModal] = useState({ open: false, preUserId: null, preDay: null });
-  const [swapModal, setSwapModal] = useState({ open: false, shift: null });
+  const [swapModal, setSwapModal] = useState({ open: false, shift: null, requestUserId: null });
   const [inviteModal, setInviteModal] = useState(false);
 
   const location = data.locations.find((l) => l.id === locationId) || data.locations[0];
@@ -1521,6 +1584,8 @@ function InnerApp(props) {
   } = props;
   const { currentUser, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerProfileOpen, setHeaderProfileOpen] = useState(false);
+  const [proUpsell, setProUpsell] = useState(null);
   const [settingsSection, setSettingsSection] = useState("general");
 
   const flags = data.feature_flags || defaultFlags();
@@ -1562,6 +1627,32 @@ function InnerApp(props) {
 
   const shiftWeek = (delta) => setWeekStart((s) => fmtDate(startOfWeek(addDays(s, delta * 7), flags.weekStartsOn)));
   const handlePrint = () => window.print();
+  const openProfileTab = () => {
+    setTab("profile");
+    setHeaderProfileOpen(false);
+    setMobileMenuOpen(false);
+  };
+  const openProUpsell = (featureKey) => {
+    const features = {
+      laborCost: {
+        title: "Labor cost insights",
+        benefits: [
+          "Track wage impact by day before you publish.",
+          "Spot overtime pressure earlier in the week.",
+          "Share clean labor summaries with leadership.",
+        ],
+      },
+      payrollExport: {
+        title: "Payroll export",
+        benefits: [
+          "Export clean payroll-ready hours in one click.",
+          "Reduce manual spreadsheet cleanup every week.",
+          "Keep finance and schedule data aligned.",
+        ],
+      },
+    };
+    setProUpsell(features[featureKey] || null);
+  };
   const exportAllData = () => {
     const payload = {
       exported_at: new Date().toISOString(),
@@ -1627,7 +1718,15 @@ function InnerApp(props) {
             <div className="text-xs text-brand-dark">{navItems.find((item) => item.id === tab)?.label || "Schedule"}</div>
           </div>
         </div>
-        <AvatarBadge name={currentStateUser.full_name} className="h-10 w-10" />
+        <button
+          type="button"
+          className="rounded-2xl border border-brand-light bg-white p-1 shadow-sm transition hover:border-brand"
+          onClick={() => setHeaderProfileOpen((v) => !v)}
+          aria-label="Open profile menu"
+          aria-haspopup="dialog"
+        >
+          <AvatarBadge name={currentStateUser.full_name} className="h-10 w-10" />
+        </button>
       </div>
 
       {mobileMenuOpen && (
@@ -1651,6 +1750,14 @@ function InnerApp(props) {
         </div>
       )}
 
+      <HeaderProfileMenu
+        open={headerProfileOpen}
+        onClose={() => setHeaderProfileOpen(false)}
+        user={currentStateUser}
+        onEditProfile={openProfileTab}
+        onLogout={logout}
+      />
+
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-4 pb-24 md:ml-[220px] md:px-6 md:py-6 md:pb-6">
         <header className="print-hidden rounded-[1.75rem] border border-brand-light bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1660,23 +1767,38 @@ function InnerApp(props) {
               <div className="mt-1 text-sm text-brand-dark">Friendly scheduling for {data.locations.find((entry) => entry.id === locationId)?.name || "your team"}.</div>
               <DailyNugget />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="grid gap-1.5 text-sm">
-                <span className="text-sm font-medium text-brand-text">Location</span>
-                <select className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                  {data.locations.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1.5 text-sm">
-                <span className="text-sm font-medium text-brand-text">Week</span>
-                <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
-              </label>
-              <div className="flex items-end gap-2">
-                <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>shiftWeek(-1)}>Prev</button>
-                <button className="rounded-xl bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-darker" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
-                <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>shiftWeek(1)}>Next</button>
+            <div className="flex flex-col gap-3 lg:items-end">
+              <button
+                type="button"
+                className="inline-flex items-center gap-3 self-start rounded-2xl border border-brand-light bg-brand-lightest/70 px-3 py-2 text-left transition hover:border-brand hover:bg-brand-lightest lg:self-end"
+                onClick={() => setHeaderProfileOpen((v) => !v)}
+                aria-label="Open profile menu"
+                aria-haspopup="dialog"
+              >
+                <div className="hidden text-right sm:block">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-dark/70">Account</div>
+                  <div className="max-w-[12rem] truncate text-sm font-semibold text-brand-text">{currentStateUser.full_name}</div>
+                </div>
+                <AvatarBadge name={currentStateUser.full_name} className="h-11 w-11" />
+              </button>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="grid gap-1.5 text-sm">
+                  <span className="text-sm font-medium text-brand-text">Location</span>
+                  <select className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+                    {data.locations.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  <span className="text-sm font-medium text-brand-text">Week</span>
+                  <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+                </label>
+                <div className="flex items-end gap-2">
+                  <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>shiftWeek(-1)}>Prev</button>
+                  <button className="rounded-xl bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-darker" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
+                  <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>shiftWeek(1)}>Next</button>
+                </div>
               </div>
             </div>
           </div>
@@ -1711,7 +1833,7 @@ function InnerApp(props) {
           <div className="mb-4 grid gap-3 md:grid-cols-4">
             <SummaryStat label="Total shifts" value={(schedule?.shifts || []).length} />
             <SummaryStat label="Scheduled hours" value={`${totalScheduledHours.toFixed(2)} h`} />
-            <SummaryStat label={<span>Estimated labor cost<ProBadge /></span>} value={formatCurrency(totalLaborCost)} />
+            <SummaryStat label={<span>Estimated labor cost<ProBadge /></span>} value={formatCurrency(totalLaborCost)} onClick={() => openProUpsell("laborCost")} />
             <SummaryStat label="Open shifts" value={openShifts.length} />
           </div>
 
@@ -1743,7 +1865,7 @@ function InnerApp(props) {
                 openShiftClaims={data.open_shift_claims || []}
                 onCreate={(userId, day) => setShiftModal({ open: true, preUserId: userId, preDay: day })}
                 onDelete={deleteShift}
-                onSwap={(shift) => setSwapModal({ open: true, shift })}
+                onSwap={(shift) => setSwapModal({ open: true, shift, requestUserId: shift.user_id || currentStateUser.id })}
                 onMarkOpen={markShiftOpen}
                 onClaimOpen={(shift) => createOpenShiftClaim(shift.id, currentStateUser.id)}
               />
@@ -1784,6 +1906,9 @@ function InnerApp(props) {
             <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={handlePrint}>Print</button>
             <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={copyCsv}>Copy CSV</button>
             <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={exportCsv}>Download CSV</button>
+            <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest" onClick={() => openProUpsell("payrollExport")}>
+              Payroll export<ProBadge />
+            </button>
             {DEMO_MODE && SHOW_DEMO_CONTROLS && (
               <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest" onClick={resetDemo}>Reset Demo</button>
             )}
@@ -1956,7 +2081,7 @@ function InnerApp(props) {
             positionsById={positionsById}
             locationName={data.locations.find((entry) => entry.id === locationId)?.name || "Main Location"}
             positionColors={positionColors}
-            onSwapRequest={(shift) => setSwapModal({ open: true, shift })}
+            onSwapRequest={(shift) => setSwapModal({ open: true, shift, requestUserId: shift.user_id || currentUser.id })}
           />
           <OpenShiftList
             shifts={(schedule?.shifts || []).filter((shift) => !shift.user_id)}
@@ -2218,40 +2343,56 @@ function InnerApp(props) {
                   />
                 </div>
 
-                <div className="space-y-3">
+                <div className="overflow-x-auto rounded-2xl border border-brand-light bg-white">
+                  <div className="grid grid-cols-[minmax(0,1.7fr)_96px_96px] gap-3 bg-brand-lightest px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-dark">
+                    <div>Event</div>
+                    <div className="text-center">Email</div>
+                    <div className="text-center">Push</div>
+                  </div>
                   {[
-                    ["newShift", "New shift"],
-                    ["shiftChange", "Shift change"],
-                    ["swapRequest", "Swap request"],
+                    ["newShift", "New shift published"],
+                    ["shiftChange", "Shift changed"],
+                    ["swapRequest", "Swap approved"],
                     ["timeOffApproved", "Time off approved"],
                   ].map(([eventKey, label]) => (
-                    <div key={eventKey} className="rounded-2xl border border-brand-light bg-white p-4">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div className="font-semibold text-brand-text">{label}</div>
-                        <div className="grid gap-2 md:grid-cols-2">
-                          <Checkbox
-                            label="Email"
-                            checked={!!clientSettings.notificationEvents?.[eventKey]?.email}
-                            onChange={(v) => setClientSettings((s) => ({
-                              ...s,
-                              notificationEvents: {
-                                ...s.notificationEvents,
-                                [eventKey]: { ...(s.notificationEvents?.[eventKey] || {}), email: v },
-                              },
-                            }))}
-                          />
-                          <Checkbox
-                            label={<span>Push<ProBadge /></span>}
-                            checked={!!clientSettings.notificationEvents?.[eventKey]?.push}
-                            onChange={(v) => setClientSettings((s) => ({
-                              ...s,
-                              notificationEvents: {
-                                ...s.notificationEvents,
-                                [eventKey]: { ...(s.notificationEvents?.[eventKey] || {}), push: v },
-                              },
-                            }))}
-                          />
-                        </div>
+                    <div key={eventKey} className="grid grid-cols-[minmax(0,1.7fr)_96px_96px] items-center gap-3 border-t border-brand-light/70 px-4 py-3">
+                      <div className="text-sm font-semibold text-brand-text">{label}</div>
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-label={`${label} email`}
+                          aria-checked={!!clientSettings.notificationEvents?.[eventKey]?.email}
+                          onClick={() => setClientSettings((s) => ({
+                            ...s,
+                            notificationEvents: {
+                              ...s.notificationEvents,
+                              [eventKey]: { ...(s.notificationEvents?.[eventKey] || {}), email: !s.notificationEvents?.[eventKey]?.email },
+                            },
+                          }))}
+                          className={`relative inline-flex h-6 w-11 rounded-full transition ${clientSettings.notificationEvents?.[eventKey]?.email ? "bg-brand-dark" : "bg-gray-200"}`}
+                        >
+                          <span className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-sm transition ${clientSettings.notificationEvents?.[eventKey]?.email ? "translate-x-5" : "translate-x-0.5"}`} />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-label={`${label} push`}
+                          aria-checked={!!clientSettings.notificationEvents?.[eventKey]?.push}
+                          onClick={() => setClientSettings((s) => ({
+                            ...s,
+                            notificationEvents: {
+                              ...s.notificationEvents,
+                              [eventKey]: { ...(s.notificationEvents?.[eventKey] || {}), push: !s.notificationEvents?.[eventKey]?.push },
+                            },
+                          }))}
+                          className={`relative inline-flex h-6 w-11 rounded-full transition ${clientSettings.notificationEvents?.[eventKey]?.push ? "bg-brand-dark" : "bg-gray-200"}`}
+                        >
+                          <span className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-sm transition ${clientSettings.notificationEvents?.[eventKey]?.push ? "translate-x-5" : "translate-x-0.5"}`} />
+                        </button>
+                        <ProBadge className="ml-0" />
                       </div>
                     </div>
                   ))}
@@ -2320,13 +2461,16 @@ function InnerApp(props) {
 
       <SwapRequestModal
         open={swapModal.open}
-        onClose={() => setSwapModal({ open: false, shift: null })}
+        onClose={() => setSwapModal({ open: false, shift: null, requestUserId: null })}
         currentUser={currentUser}
         users={users}
         schedule={schedule}
         shift={swapModal.shift}
+        requestUserId={swapModal.requestUserId}
         onSubmit={createSwapRequest}
       />
+
+      <ProUpsellModal feature={proUpsell} onClose={() => setProUpsell(null)} />
 
       <InviteModal
         open={inviteModal}
@@ -2394,13 +2538,27 @@ function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
   );
 }
 
-function SummaryStat({ label, value }) {
-  return (
-    <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+function SummaryStat({ label, value, onClick }) {
+  const content = (
+    <>
       <div className="text-xs font-medium uppercase tracking-wide text-brand-text/60">{label}</div>
       <div className="mt-1 text-lg font-semibold text-brand-text">{value}</div>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="rounded-[1.5rem] border border-brand-light bg-white p-4 text-left shadow-sm transition hover:border-brand hover:bg-brand-lightest"
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">{content}</div>;
 }
 
 function EmptyState({ icon, message, heading, actionLabel, onAction }) {
@@ -2892,12 +3050,20 @@ function LoginPage({ onAfterLogin, backendMode }) {
   );
 }
 
-function SwapRequestModal({ open, onClose, currentUser, users, schedule, shift, onSubmit }) {
-  const peers = users.filter((u) => u.id !== currentUser.id);
+function SwapRequestModal({ open, onClose, currentUser, users, schedule, shift, requestUserId, onSubmit }) {
+  const requestUser = users.find((user) => user.id === (requestUserId || shift?.user_id || currentUser.id)) || currentUser;
+  const peers = users.filter((u) => u.id !== requestUser.id);
   const [peerId, setPeerId] = useState(peers[0]?.id || "");
   const [peerShiftId, setPeerShiftId] = useState("");
   const [notes, setNotes] = useState("");
   const peerShifts = (schedule?.shifts || []).filter((s) => s.user_id === peerId);
+
+  useEffect(() => {
+    if (!open) return;
+    setPeerId(peers[0]?.id || "");
+    setPeerShiftId("");
+    setNotes("");
+  }, [open, requestUser.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -2919,7 +3085,7 @@ function SwapRequestModal({ open, onClose, currentUser, users, schedule, shift, 
             onClick={() => {
               if (!peerId) return alert("Pick a coworker.");
               onSubmit({
-                from_user_id: currentUser.id,
+                from_user_id: requestUser.id,
                 to_user_id: peerId,
                 from_shift_id: shift.id,
                 to_shift_id: peerShiftId || null,
@@ -2935,9 +3101,12 @@ function SwapRequestModal({ open, onClose, currentUser, users, schedule, shift, 
     >
       <div className="text-sm">
         <div className="rounded-xl border p-2">
-          <div className="font-medium">Your shift</div>
+          <div className="font-medium">{requestUser.id === currentUser.id ? "Your shift" : `${requestUser.full_name}'s shift`}</div>
           <div className="text-gray-600">{fmtDate(shift.starts_at)} • {fmtTime(shift.starts_at)}–{fmtTime(shift.ends_at)}</div>
         </div>
+        {requestUser.id !== currentUser.id && (
+          <div className="mt-2 text-xs text-brand-text/70">This request will be created for {requestUser.full_name}.</div>
+        )}
       </div>
       <Select label="Coworker" value={peerId} onChange={setPeerId} options={peers.map(u => ({ value: u.id, label: u.full_name }))} />
       <Select
@@ -3362,7 +3531,7 @@ function TimeOffForm({ onSubmit }) {
   const [notes, setNotes] = useState("");
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-3 text-sm shadow-sm">
+    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-2.5 text-sm shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h4 className="font-semibold">Request time off</h4>
         <button className="rounded-xl border border-brand bg-white px-3 py-1.5 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => setExpanded((v) => !v)}>
@@ -3370,21 +3539,21 @@ function TimeOffForm({ onSubmit }) {
         </button>
       </div>
       {expanded && (
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_2fr_auto]">
-          <label className="grid gap-1 text-sm">
-            <span className="text-brand-text/75">From</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <label className="grid gap-1 text-xs">
+            <span className="font-medium uppercase tracking-wide text-brand-text/60">From</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-xs" />
           </label>
-          <label className="grid gap-1 text-sm">
-            <span className="text-brand-text/75">To</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+          <label className="grid gap-1 text-xs">
+            <span className="font-medium uppercase tracking-wide text-brand-text/60">To</span>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-xs" />
           </label>
-          <label className="grid gap-1 text-sm">
-            <span className="text-brand-text/75">Notes</span>
-            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+          <label className="col-span-2 grid gap-1 text-xs">
+            <span className="font-medium uppercase tracking-wide text-brand-text/60">Notes</span>
+            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-sm" />
           </label>
-          <div className="flex items-end justify-end">
-            <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={() => { onSubmit({ date_from: from, date_to: to, notes }); setExpanded(false); }}>
+          <div className="col-span-2 flex items-end justify-end">
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={() => { onSubmit({ date_from: from, date_to: to, notes }); setExpanded(false); }}>
               Submit
             </button>
           </div>
@@ -3418,7 +3587,7 @@ function MyUnavailabilityEditor({ currentUser, list, onAdd, onUpdate, onDelete }
   const beginEdit = (ua) => { setEditingId(ua.id); setWeekday(Number(ua.weekday)); setStart(ua.start_hhmm); setEnd(ua.end_hhmm); setNotes(ua.notes || ''); setExpanded(true); };
 
   return (
-    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-3 text-sm shadow-sm">
+    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-2.5 text-sm shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h4 className="font-semibold">My weekly unavailability</h4>
         <button className="rounded-xl border border-brand bg-white px-3 py-1.5 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => { setExpanded((v) => !v); if (expanded) setEditingId(null); }}>
@@ -3426,14 +3595,24 @@ function MyUnavailabilityEditor({ currentUser, list, onAdd, onUpdate, onDelete }
         </button>
       </div>
       {expanded && (
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_1fr_2fr_auto]">
-          <Select label="Weekday" value={weekday} onChange={(v)=>setWeekday(Number(v))} options={WEEK_LABELS.map((w,i)=>({value:i,label:w}))} />
-          <label className="grid gap-1 text-sm"><span className="text-brand-text/75">Start</span><input type="time" value={start} onChange={(e)=>setStart(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm"/></label>
-          <label className="grid gap-1 text-sm"><span className="text-brand-text/75">End</span><input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm"/></label>
-          <label className="grid gap-1 text-sm"><span className="text-brand-text/75">Notes</span><input type="text" value={notes} onChange={(e)=>setNotes(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" /></label>
-          <div className="flex items-end justify-end gap-2">
-            {editingId && <button className="rounded-xl border border-brand bg-white px-3 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>{ setEditingId(null); setNotes(''); setExpanded(false); }}>Cancel</button>}
-            <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={save}>{editingId ? 'Save' : 'Add'}</button>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="grid gap-1 text-xs">
+            <span className="font-medium uppercase tracking-wide text-brand-text/60">Weekday</span>
+            <select value={weekday} onChange={(e)=>setWeekday(Number(e.target.value))} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-sm">
+              {WEEK_LABELS.map((label, index) => (
+                <option key={label} value={index}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs">
+            <span className="font-medium uppercase tracking-wide text-brand-text/60">Notes</span>
+            <input type="text" value={notes} onChange={(e)=>setNotes(e.target.value)} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-sm" />
+          </label>
+          <label className="grid gap-1 text-xs"><span className="font-medium uppercase tracking-wide text-brand-text/60">Start</span><input type="time" value={start} onChange={(e)=>setStart(e.target.value)} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-sm"/></label>
+          <label className="grid gap-1 text-xs"><span className="font-medium uppercase tracking-wide text-brand-text/60">End</span><input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} className="rounded-xl border border-brand-light px-2.5 py-1.5 text-sm"/></label>
+          <div className="sm:col-span-2 flex items-end justify-end gap-2">
+            {editingId && <button className="rounded-xl border border-brand bg-white px-3 py-1.5 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>{ setEditingId(null); setNotes(''); setExpanded(false); }}>Cancel</button>}
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={save}>{editingId ? 'Save' : 'Add'}</button>
           </div>
         </div>
       )}
