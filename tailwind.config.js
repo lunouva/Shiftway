@@ -16,5 +16,11 @@ export default {
       },
     },
   },
+  safelist: [
+    "bg-brand", "bg-brand-dark", "bg-brand-darker", "bg-brand-light", "bg-brand-lightest",
+    "text-brand-dark", "text-brand-darker", "text-brand-text",
+    "border-brand", "border-brand-dark", "border-brand-light",
+  ],
   plugins: [],
 }
+// This file intentionally left with a trailing newline
