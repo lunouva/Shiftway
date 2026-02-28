@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState, createContext, useContext } from "react";
 
+/* tailwind-safelist: bg-brand bg-brand-dark bg-brand-darker bg-brand-light bg-brand-lightest text-brand-dark text-brand-darker text-brand-text border-brand border-brand-dark border-brand-light */
+
 /**
  * Shiftway – safe build + updates per new spec
  * - Prev/Next week controls (respect custom work-week start)
@@ -83,6 +85,16 @@ const download = (filename, text) => {
   URL.revokeObjectURL(url);
 };
 
+const downloadText = (filename, text, type = "text/plain;charset=utf-8;") => {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 const isDateWithin = (dayISO, fromISO, toISO) => dayISO >= fromISO && dayISO <= toISO; // strings YYYY-MM-DD
 
 const urlBase64ToUint8Array = (base64String) => {
@@ -116,13 +128,48 @@ const STORAGE_KEY = "shiftway_v2";
 const CLIENT_SETTINGS_KEY = "shiftway_client_settings";
 const TOKEN_KEY = "shiftway_token";
 
+const defaultClientSettings = () => ({
+  apiBase: "",
+  orgName: "Shiftway",
+  scheduleSettings: {
+    clopeningRestHours: 10,
+    hoursOfOperation: "09:00 - 21:00",
+    copyWeekDefault: "replace",
+  },
+  timeOffSettings: {
+    cutoffDaysBeforeShift: 3,
+    allowPtoBalance: false,
+    requireManagerNote: false,
+  },
+  notificationEvents: {
+    newShift: { email: true, push: false },
+    shiftChange: { email: true, push: false },
+    swapRequest: { email: true, push: false },
+    timeOffApproved: { email: true, push: false },
+  },
+});
+
 const loadClientSettings = () => {
-  const base = { apiBase: "" };
+  const base = defaultClientSettings();
   try {
     const raw = localStorage.getItem(CLIENT_SETTINGS_KEY);
     if (!raw) return base;
     const parsed = JSON.parse(raw);
-    const merged = { ...base, ...parsed };
+    const merged = {
+      ...base,
+      ...parsed,
+      scheduleSettings: { ...base.scheduleSettings, ...(parsed?.scheduleSettings || {}) },
+      timeOffSettings: { ...base.timeOffSettings, ...(parsed?.timeOffSettings || {}) },
+      notificationEvents: {
+        ...base.notificationEvents,
+        ...Object.fromEntries(
+          Object.entries(parsed?.notificationEvents || {}).map(([eventKey, eventValue]) => [
+            eventKey,
+            { ...(base.notificationEvents[eventKey] || { email: true, push: false }), ...(eventValue || {}) },
+          ])
+        ),
+      },
+    };
     return merged;
   } catch {
     return base;
@@ -142,6 +189,7 @@ const defaultFlags = () => ({
   tasksEnabled: true,
   messagesEnabled: true,
   swapsEnabled: true,
+  openShiftClaimingEnabled: true,
   weekStartsOn: 1, // 0=Sun ... 6=Sat
 });
 
@@ -211,6 +259,7 @@ const loadData = () => {
     if (!parsed.feature_flags) parsed.feature_flags = defaultFlags();
     if (parsed.feature_flags.weekStartsOn == null) parsed.feature_flags.weekStartsOn = 1;
     if (parsed.feature_flags.swapsEnabled == null) parsed.feature_flags.swapsEnabled = true;
+    if (parsed.feature_flags.openShiftClaimingEnabled == null) parsed.feature_flags.openShiftClaimingEnabled = true;
     // backfill user extra fields
     parsed.users = (parsed.users || []).map(normalizeUser);
     return parsed;
@@ -396,6 +445,10 @@ function Pill({ children, tone = "default" }) {
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${bgCls} ${toneCls}`}>{children}</span>;
 }
 
+function ProBadge({ className = "" }) {
+  return <span className={`inline text-[10px] font-bold bg-accent text-white rounded-full px-1.5 py-0.5 ml-1 ${className}`}>Pro</span>;
+}
+
 function Toolbar({ children }) {
   return <div className="flex flex-wrap gap-2">{children}</div>;
 }
@@ -439,14 +492,23 @@ function Select({ label, value, onChange, options }) {
   );
 }
 
-function Checkbox({ label, checked, onChange, hint }) {
+function Checkbox({ label, checked, onChange, hint, disabled = false }) {
   return (
-    <label className="flex items-start gap-3 rounded-2xl border border-brand-light bg-brand-lightest/60 p-3 text-sm text-brand-text">
-      <input type="checkbox" checked={checked} onChange={(e)=>onChange(e.target.checked)} className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-dark focus:ring-brand/30"/>
+    <label className={`flex items-start justify-between gap-3 rounded-2xl border border-brand-light bg-brand-lightest/60 p-3 text-sm text-brand-text ${disabled ? "opacity-60" : ""}`}>
       <span>
         <span className="font-medium">{label}</span>
         {hint && <div className="text-xs text-brand-text/70">{hint}</div>}
       </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition ${checked ? "bg-brand-dark" : "bg-gray-200"} ${disabled ? "cursor-not-allowed" : ""}`}
+      >
+        <span className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-sm transition ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+      </button>
     </label>
   );
 }
@@ -764,7 +826,7 @@ function WeekGrid({
                   {(openShiftsByDay[fmtDate(day)] || []).map((s) => {
                     const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
                     const pendingClaim = pendingClaimByShiftId[s.id];
-                    const canClaim = currentUser?.role === "employee" && !pendingClaim;
+                    const canClaim = currentUser?.role === "employee" && !pendingClaim && !!onClaimOpen;
                     return (
                       <div key={s.id} className={`rounded-xl border border-dashed border-brand/40 bg-white px-3 py-3 text-sm shadow-sm ${tone.border}`}>
                         <div className="font-semibold text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
@@ -1459,6 +1521,7 @@ function InnerApp(props) {
   } = props;
   const { currentUser, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState("general");
 
   if (!currentUser) return <LoginPage backendMode={backendMode} onAfterLogin={(u) => setTab(u.role === "employee" ? "my" : "schedule")} />;
 
@@ -1494,9 +1557,18 @@ function InnerApp(props) {
   const totalLaborCost = Object.values(laborCostByDay).reduce((sum, amount) => sum + (Number(amount) || 0), 0);
   const navItems = (isManager ? MANAGER_NAV : EMPLOYEE_NAV).filter((item) => !item.flag || flags[item.flag]);
   const navBadgeCounts = { pending: pendingCount };
+  const locationById = useMemo(() => Object.fromEntries((data.locations || []).map((entry) => [entry.id, entry])), [data.locations]);
 
   const shiftWeek = (delta) => setWeekStart((s) => fmtDate(startOfWeek(addDays(s, delta * 7), flags.weekStartsOn)));
   const handlePrint = () => window.print();
+  const exportAllData = () => {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      data,
+      clientSettings,
+    };
+    downloadText("Shiftway_export.json", JSON.stringify(payload, null, 2), "application/json;charset=utf-8;");
+  };
   const enablePush = async () => {
     try {
       if (!("serviceWorker" in navigator)) return alert("Push not supported in this browser.");
@@ -1638,7 +1710,7 @@ function InnerApp(props) {
           <div className="mb-4 grid gap-3 md:grid-cols-4">
             <SummaryStat label="Total shifts" value={(schedule?.shifts || []).length} />
             <SummaryStat label="Scheduled hours" value={`${totalScheduledHours.toFixed(2)} h`} />
-            <SummaryStat label="Estimated labor cost" value={formatCurrency(totalLaborCost)} />
+            <SummaryStat label={<span>Estimated labor cost<ProBadge /></span>} value={formatCurrency(totalLaborCost)} />
             <SummaryStat label="Open shifts" value={openShifts.length} />
           </div>
 
@@ -1705,7 +1777,9 @@ function InnerApp(props) {
             <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-darker" onClick={() => ensureSchedule()}>Ensure Week</button>
             <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-darker" onClick={() => setShiftModal({ open: true, preUserId: null, preDay: safeDate(weekStart) })}>Add open shift</button>
             <button disabled={!schedule} className={`rounded-xl border px-4 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${schedule?.status === "published" ? "border-brand bg-white text-brand-dark hover:bg-brand-lightest" : "border-brand-dark bg-brand-dark text-white hover:bg-brand-darker"}`} onClick={publish}>{schedule?.status === "published" ? "Unpublish" : "Publish"}</button>
-            <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest" onClick={copyLastWeek}>Copy last week</button>
+            <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest" onClick={copyLastWeek}>
+              Copy last week<ProBadge />
+            </button>
             <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={handlePrint}>Print</button>
             <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={copyCsv}>Copy CSV</button>
             <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={exportCsv}>Download CSV</button>
@@ -1869,6 +1943,11 @@ function InnerApp(props) {
           title={`My Schedule • ${safeDate(weekStart).toLocaleDateString()}`}
           right={<Pill tone={schedule?.status === "published" ? "success" : "warn"}>{schedule ? schedule.status : "no schedule yet"}</Pill>}
         >
+          <EmployeeNextShiftBanner
+            currentUser={currentUser}
+            schedules={data.schedules}
+            locationsById={locationById}
+          />
           <MyShifts
             currentUser={currentUser}
             schedule={schedule}
@@ -1883,7 +1962,7 @@ function InnerApp(props) {
             positionsById={positionsById}
             positionColors={positionColors}
             claims={data.open_shift_claims || []}
-            onClaim={(shiftId) => createOpenShiftClaim(shiftId, currentUser.id)}
+            onClaim={flags.openShiftClaimingEnabled ? (shiftId) => createOpenShiftClaim(shiftId, currentUser.id) : null}
           />
           <TimeOffForm onSubmit={(vals) => createTimeOff({ user_id: currentUser.id, ...vals })} />
           {flags.unavailabilityEnabled && flags.employeeEditUnavailability && (
@@ -1902,89 +1981,313 @@ function InnerApp(props) {
       {tab === "settings" && (
         <Section title="Settings">
           <div className="space-y-6 text-sm">
-            {SHOW_BACKEND_SETTINGS && (
-              <div>
-                <div className="font-semibold">Backend (internal)</div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
+            <div className="rounded-2xl border border-brand-light bg-brand-lightest/60 p-2">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["general", "General"],
+                  ["schedule", "Schedule"],
+                  ["time-off", "Time Off"],
+                  ["notifications", "Notifications"],
+                  ["danger", "Danger Zone"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${settingsSection === id ? "bg-brand-dark text-white shadow-sm" : "bg-white text-brand-dark hover:bg-brand-light"}`}
+                    onClick={() => setSettingsSection(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {settingsSection === "general" && (
+              <div className="space-y-6">
+                <div className="grid gap-3 md:grid-cols-2">
                   <TextInput
-                    label="API base URL"
-                    value={clientSettings.apiBase}
-                    onChange={(v) => setClientSettings((s) => ({ ...s, apiBase: v }))}
-                    placeholder="http://localhost:4000"
+                    label="Organization name"
+                    value={clientSettings.orgName}
+                    onChange={(v) => setClientSettings((s) => ({ ...s, orgName: v }))}
+                    placeholder="Shiftway"
+                  />
+                  <Select
+                    label="Week start day"
+                    value={flags.weekStartsOn}
+                    onChange={(v) => {
+                      const n = Number(v);
+                      setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, weekStartsOn: n } }));
+                      setWeekStart((s) => fmtDate(startOfWeek(s, n)));
+                    }}
+                    options={WEEK_LABELS.map((w, i) => ({ value: i, label: w }))}
                   />
                 </div>
-                <div className="mt-2 text-xs text-gray-600">
-                  Hidden by default. Enable via <code>VITE_SHOW_BACKEND_SETTINGS=1</code>.
+
+                <div>
+                  <div className="font-semibold text-brand-text">Location names</div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {data.locations.map((entry) => (
+                      <TextInput
+                        key={entry.id}
+                        label={`Location ${entry.id}`}
+                        value={entry.name}
+                        onChange={(value) => setData((d) => ({
+                          ...d,
+                          locations: d.locations.map((location) => location.id === entry.id ? { ...location, name: value } : location),
+                        }))}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {SHOW_BACKEND_SETTINGS && (
+                  <div>
+                    <div className="font-semibold">Backend (internal)</div>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      <TextInput
+                        label="API base URL"
+                        value={clientSettings.apiBase}
+                        onChange={(v) => setClientSettings((s) => ({ ...s, apiBase: v }))}
+                        placeholder="http://localhost:4000"
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-gray-600">
+                      Hidden by default. Enable via <code>VITE_SHOW_BACKEND_SETTINGS=1</code>.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {settingsSection === "schedule" && (
+              <div className="space-y-6">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <Checkbox
+                    label={<span>Shift acceptance / open shift claiming<ProBadge /></span>}
+                    checked={flags.openShiftClaimingEnabled}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, openShiftClaimingEnabled: v } }))}
+                    hint="Allow employees to claim open shifts."
+                  />
+                  <Checkbox
+                    label="Enable unavailability"
+                    checked={flags.unavailabilityEnabled}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, unavailabilityEnabled: v } }))}
+                    hint="Hide all unavailability UI when turned off."
+                  />
+                  <Checkbox
+                    label="Employees can edit their unavailability"
+                    checked={flags.employeeEditUnavailability}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, employeeEditUnavailability: v } }))}
+                    hint="Managers can still edit from the admin view."
+                  />
+                  <Checkbox
+                    label="Show time-off chips on schedule"
+                    checked={flags.showTimeOffOnSchedule}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, showTimeOffOnSchedule: v } }))}
+                    hint="Show approved and pending time-off states in the grid."
+                  />
+                  <Checkbox
+                    label="Newsfeed"
+                    checked={flags.newsfeedEnabled}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, newsfeedEnabled: v } }))}
+                  />
+                  <Checkbox
+                    label="Employees can post to feed"
+                    checked={flags.employeesCanPostToFeed}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, employeesCanPostToFeed: v } }))}
+                  />
+                  <Checkbox
+                    label="Tasks"
+                    checked={flags.tasksEnabled}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, tasksEnabled: v } }))}
+                  />
+                  <Checkbox
+                    label="Messages"
+                    checked={flags.messagesEnabled}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, messagesEnabled: v } }))}
+                  />
+                  <Checkbox
+                    label="Shift swaps"
+                    checked={flags.swapsEnabled}
+                    onChange={(v) => setData((d) => ({ ...d, feature_flags: { ...d.feature_flags, swapsEnabled: v } }))}
+                  />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <label className="grid gap-1.5 text-sm text-brand-text">
+                    <span className="text-sm font-medium text-brand-text">Clopening rest period (hours)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={clientSettings.scheduleSettings?.clopeningRestHours ?? 10}
+                      onChange={(e) => setClientSettings((s) => ({
+                        ...s,
+                        scheduleSettings: { ...s.scheduleSettings, clopeningRestHours: Number(e.target.value) || 0 },
+                      }))}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    />
+                  </label>
+                  <TextInput
+                    label="Hours of operation"
+                    value={clientSettings.scheduleSettings?.hoursOfOperation || ""}
+                    onChange={(v) => setClientSettings((s) => ({ ...s, scheduleSettings: { ...s.scheduleSettings, hoursOfOperation: v } }))}
+                    placeholder="09:00 - 21:00"
+                  />
+                  <Select
+                    label={<span>Copy-week default<ProBadge /></span>}
+                    value={clientSettings.scheduleSettings?.copyWeekDefault || "replace"}
+                    onChange={(v) => setClientSettings((s) => ({ ...s, scheduleSettings: { ...s.scheduleSettings, copyWeekDefault: v } }))}
+                    options={[
+                      { value: "replace", label: "Replace current week" },
+                      { value: "append", label: "Append copied shifts" },
+                      { value: "confirm", label: "Always confirm first" },
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <div className="font-semibold">Positions (roles)</div>
+                  <div className="mt-2 grid gap-4 md:grid-cols-[1fr,2fr]">
+                    <AddPositionForm onAdd={addPosition} />
+                    <div>
+                      <h4 className="mb-2 font-semibold">Current roles</h4>
+                      <ul className="divide-y rounded-2xl border">
+                        {positions.map((p) => (
+                          <li key={p.id} className="flex items-center justify-between p-3">
+                            <div className="font-medium">{p.name}</div>
+                            <Pill>loc: {p.location_id}</Pill>
+                          </li>
+                        ))}
+                        {positions.length === 0 && <li className="p-3 text-sm text-gray-600">No positions yet.</li>}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            <div>
-              <div className="font-semibold">Feature toggles</div>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <Checkbox label="Enable Unavailability" checked={flags.unavailabilityEnabled} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, unavailabilityEnabled: v }}))} hint="If off, all unavailability UI is hidden."/>
-                <Checkbox label="Employees can edit their unavailability" checked={flags.employeeEditUnavailability} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, employeeEditUnavailability: v }}))} hint="Admin can still view and edit in Unavailability tab."/>
-                <Checkbox label="Show Time‑off chips on Schedule" checked={flags.showTimeOffOnSchedule} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, showTimeOffOnSchedule: v }}))} hint="Shows pending/approved ranges in the grid."/>
-                <Checkbox label="Newsfeed" checked={flags.newsfeedEnabled} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, newsfeedEnabled: v }}))}/>
-                <Checkbox label="Employees can post to feed" checked={flags.employeesCanPostToFeed} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, employeesCanPostToFeed: v }}))}/>
-                <Checkbox label="Tasks" checked={flags.tasksEnabled} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, tasksEnabled: v }}))}/>
-                <Checkbox label="Messages" checked={flags.messagesEnabled} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, messagesEnabled: v }}))}/>
-                <Checkbox label="Shift swaps" checked={flags.swapsEnabled} onChange={(v)=> setData(d=> ({...d, feature_flags: { ...d.feature_flags, swapsEnabled: v }}))}/>
-                <Select label="Work week starts on" value={flags.weekStartsOn} onChange={(v)=>{ const n = Number(v); setData(d=> ({...d, feature_flags: { ...d.feature_flags, weekStartsOn: n }})); setWeekStart(s=> fmtDate(startOfWeek(s, n))); }} options={WEEK_LABELS.map((w,i)=>({value:i,label:w}))} />
-              </div>
-            </div>
-
-            <div>
-              <div className="font-semibold">Notifications</div>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <Checkbox
-                  label="Email notifications"
-                  checked={!!data.notification_settings?.email}
-                  onChange={(v)=> setData(d=> ({...d, notification_settings: { ...(d.notification_settings||{}), email: v }}))}
-                />
-                <Checkbox
-                  label="SMS notifications"
-                  checked={!!data.notification_settings?.sms}
-                  onChange={(v)=> setData(d=> ({...d, notification_settings: { ...(d.notification_settings||{}), sms: v }}))}
-                />
-                <Checkbox
-                  label="Push notifications"
-                  checked={!!data.notification_settings?.push}
-                  onChange={(v)=> setData(d=> ({...d, notification_settings: { ...(d.notification_settings||{}), push: v }}))}
-                />
-              </div>
-              {backendMode && (
-                <div className="mt-2">
-                  <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={enablePush}>Enable push notifications</button>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="font-semibold">Positions (roles)</div>
-              <div className="grid gap-4 md:grid-cols-[1fr,2fr] mt-2">
-                <AddPositionForm onAdd={addPosition} />
-                <div>
-                  <h4 className="mb-2 font-semibold">Current roles</h4>
-                  <ul className="divide-y rounded-2xl border">
-                    {positions.map((p) => (
-                      <li key={p.id} className="flex items-center justify-between p-3">
-                        <div className="font-medium">{p.name}</div>
-                        <Pill>loc: {p.location_id}</Pill>
-                      </li>
-                    ))}
-                    {positions.length === 0 && <li className="p-3 text-sm text-gray-600">No positions yet.</li>}
-                  </ul>
+            {settingsSection === "time-off" && (
+              <div className="space-y-6">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <label className="grid gap-1.5 text-sm text-brand-text">
+                    <span className="text-sm font-medium text-brand-text">Cutoff days before shift</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={clientSettings.timeOffSettings?.cutoffDaysBeforeShift ?? 3}
+                      onChange={(e) => setClientSettings((s) => ({
+                        ...s,
+                        timeOffSettings: { ...s.timeOffSettings, cutoffDaysBeforeShift: Number(e.target.value) || 0 },
+                      }))}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    />
+                  </label>
+                  <Checkbox
+                    label="Allow PTO balance tracking"
+                    checked={!!clientSettings.timeOffSettings?.allowPtoBalance}
+                    onChange={(v) => setClientSettings((s) => ({ ...s, timeOffSettings: { ...s.timeOffSettings, allowPtoBalance: v } }))}
+                    hint="Store PTO allowance rules in client settings."
+                  />
+                  <Checkbox
+                    label="Require manager note"
+                    checked={!!clientSettings.timeOffSettings?.requireManagerNote}
+                    onChange={(v) => setClientSettings((s) => ({ ...s, timeOffSettings: { ...s.timeOffSettings, requireManagerNote: v } }))}
+                    hint="Require a note when approving or denying requests."
+                  />
                 </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <div className="font-semibold">Locations</div>
-              <ul className="mt-1 list-disc pl-6">
-                {data.locations.map((l) => (<li key={l.id}>{l.name} <span className="text-gray-500">(id: {l.id})</span></li>))}
-              </ul>
-            </div>
+            {settingsSection === "notifications" && (
+              <div className="space-y-6">
+                <div className="grid gap-2 md:grid-cols-3">
+                  <Checkbox
+                    label="Email channel"
+                    checked={!!data.notification_settings?.email}
+                    onChange={(v) => setData((d) => ({ ...d, notification_settings: { ...(d.notification_settings || {}), email: v } }))}
+                  />
+                  <Checkbox
+                    label="SMS channel"
+                    checked={!!data.notification_settings?.sms}
+                    onChange={(v) => setData((d) => ({ ...d, notification_settings: { ...(d.notification_settings || {}), sms: v } }))}
+                  />
+                  <Checkbox
+                    label={<span>Push channel<ProBadge /></span>}
+                    checked={!!data.notification_settings?.push}
+                    onChange={(v) => setData((d) => ({ ...d, notification_settings: { ...(d.notification_settings || {}), push: v } }))}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    ["newShift", "New shift"],
+                    ["shiftChange", "Shift change"],
+                    ["swapRequest", "Swap request"],
+                    ["timeOffApproved", "Time off approved"],
+                  ].map(([eventKey, label]) => (
+                    <div key={eventKey} className="rounded-2xl border border-brand-light bg-white p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="font-semibold text-brand-text">{label}</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <Checkbox
+                            label="Email"
+                            checked={!!clientSettings.notificationEvents?.[eventKey]?.email}
+                            onChange={(v) => setClientSettings((s) => ({
+                              ...s,
+                              notificationEvents: {
+                                ...s.notificationEvents,
+                                [eventKey]: { ...(s.notificationEvents?.[eventKey] || {}), email: v },
+                              },
+                            }))}
+                          />
+                          <Checkbox
+                            label={<span>Push<ProBadge /></span>}
+                            checked={!!clientSettings.notificationEvents?.[eventKey]?.push}
+                            onChange={(v) => setClientSettings((s) => ({
+                              ...s,
+                              notificationEvents: {
+                                ...s.notificationEvents,
+                                [eventKey]: { ...(s.notificationEvents?.[eventKey] || {}), push: v },
+                              },
+                            }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {backendMode && (
+                  <div>
+                    <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={enablePush}>
+                      Enable push notifications<ProBadge />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {settingsSection === "danger" && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                  <div className="font-semibold text-red-800">Danger Zone</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={resetDemo}
+                      disabled={!(DEMO_MODE && SHOW_DEMO_CONTROLS)}
+                    >
+                      Reset demo data
+                    </button>
+                    <button className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100" onClick={exportAllData}>
+                      Export all data
+                    </button>
+                  </div>
+                  {!(DEMO_MODE && SHOW_DEMO_CONTROLS) && (
+                    <div className="mt-2 text-xs text-red-700/80">Demo reset is only available when demo controls are enabled.</div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-xl bg-amber-50 p-3">
               <div className="font-semibold">How to use</div>
@@ -1993,7 +2296,7 @@ function InnerApp(props) {
                 <li>Pick a week (uses your setting) then <b>Ensure Week</b>.</li>
                 <li>Create shifts via <b>+ add</b> in each employee/day cell.</li>
                 <li>Use <b>Tasks</b> & <b>Feed</b> for daily ops.</li>
-                <li>Export via <b>Copy</b> or <b>Download CSV</b>.</li>
+                <li>Export via <b>Copy</b>, <b>Download CSV</b>, or <b>Export all data</b>.</li>
               </ol>
             </div>
 
@@ -2945,7 +3248,7 @@ function OpenShiftList({ shifts, positionsById, positionColors, claims, onClaim 
   const pendingShiftIds = new Set((claims || []).filter((claim) => claim.status === "pending").map((claim) => claim.shift_id));
   return (
     <div className="mt-4 rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
-      <div className="mb-3 text-lg font-bold text-brand-text">Open shifts</div>
+      <div className="mb-3 text-lg font-bold text-brand-text">Open shifts<ProBadge /></div>
       <ul className="space-y-2">
         {shifts.map((shift) => {
           const tone = positionColors?.[shift.position_id] || POSITION_COLOR_PALETTE[0];
@@ -2957,6 +3260,8 @@ function OpenShiftList({ shifts, positionsById, positionColors, claims, onClaim 
               </div>
               {pendingShiftIds.has(shift.id) ? (
                 <Pill tone="warn">Pending</Pill>
+              ) : !onClaim ? (
+                <Pill>Claiming off</Pill>
               ) : (
                 <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onClaim(shift.id)}>
                   Claim
@@ -2966,6 +3271,52 @@ function OpenShiftList({ shifts, positionsById, positionColors, claims, onClaim 
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+function EmployeeNextShiftBanner({ currentUser, schedules, locationsById }) {
+  const now = new Date();
+  const nowStart = new Date(now);
+  nowStart.setHours(0, 0, 0, 0);
+
+  const nextShift = (() => {
+    const upcoming = [];
+    for (const schedule of schedules || []) {
+      for (const shift of schedule.shifts || []) {
+        if (shift.user_id !== currentUser.id) continue;
+        if (safeDate(shift.ends_at) < now) continue;
+        upcoming.push({ ...shift, location_id: schedule.location_id });
+      }
+    }
+    upcoming.sort((a, b) => safeDate(a.starts_at) - safeDate(b.starts_at));
+    return upcoming[0] || null;
+  })();
+
+  let message = "No upcoming shifts scheduled. Check with your manager.";
+  if (nextShift) {
+    const shiftStart = safeDate(nextShift.starts_at);
+    const shiftDay = new Date(shiftStart);
+    shiftDay.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((shiftDay - nowStart) / 86400000);
+    const timeRange = <span className="font-bold">{fmtTime(nextShift.starts_at)} - {fmtTime(nextShift.ends_at)}</span>;
+    const locationName = locationsById?.[nextShift.location_id]?.name;
+
+    if (diffDays <= 0) {
+      message = <>Your next shift is TODAY • {timeRange}{locationName ? <> at {locationName}</> : null}</>;
+    } else if (diffDays === 1) {
+      message = <>Your next shift is TOMORROW • {timeRange}</>;
+    } else if (diffDays <= 7) {
+      message = <>Your next shift is {shiftStart.toLocaleDateString([], { weekday: "long" })} • {timeRange}</>;
+    } else {
+      message = <>Your next shift is {shiftStart.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} • {timeRange}</>;
+    }
+  }
+
+  return (
+    <div className="mb-4 rounded-2xl bg-brand-dark p-4 text-sm font-semibold text-white shadow-sm">
+      <span className="mr-2" aria-hidden="true">🕐</span>
+      {message}
     </div>
   );
 }
