@@ -1523,6 +1523,12 @@ function InnerApp(props) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("general");
 
+  const flags = data.feature_flags || defaultFlags();
+  const isManager = currentUser?.role !== "employee";
+  const scopedUsers = users;
+  const currentStateUser = data.users.find((user) => user.id === currentUser?.id) || normalizeUser(currentUser || {});
+  const positionColors = useMemo(() => Object.fromEntries(positions.map((position, index) => [position.id, POSITION_COLOR_PALETTE[index % POSITION_COLOR_PALETTE.length]])), [positions]);
+
   if (!currentUser) return <LoginPage backendMode={backendMode} onAfterLogin={(u) => setTab(u.role === "employee" ? "my" : "schedule")} />;
 
   if (loading) {
@@ -1532,12 +1538,6 @@ function InnerApp(props) {
       </div>
     );
   }
-
-  const flags = data.feature_flags || defaultFlags();
-  const isManager = currentUser.role !== "employee";
-  const scopedUsers = users;
-  const currentStateUser = data.users.find((user) => user.id === currentUser.id) || normalizeUser(currentUser);
-  const positionColors = useMemo(() => Object.fromEntries(positions.map((position, index) => [position.id, POSITION_COLOR_PALETTE[index % POSITION_COLOR_PALETTE.length]])), [positions]);
   const openShifts = (schedule?.shifts || []).filter((shift) => !shift.user_id);
   const pendingSwapCount = (data.shift_swaps || []).filter((swap) => swap.status === "pending_manager").length;
   const pendingTimeOffCount = (data.time_off_requests || []).filter((request) => request.status === "pending").length;
