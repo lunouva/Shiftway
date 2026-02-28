@@ -10,7 +10,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import nodemailer from "nodemailer";
 import twilio from "twilio";
 import webpush from "web-push";
-import { query } from "./db.js";
+import pool, { query } from "./db.js";
 
 dotenv.config();
 
@@ -259,6 +259,48 @@ const sendPush = async ({ subscriptions, title, body }) => {
   return true;
 };
 
+const emptyOrgState = () => ({
+  locations: [],
+  positions: [],
+  users: [],
+  schedules: [],
+  time_off_requests: [],
+  unavailability: [],
+  news_posts: [],
+  tasks: [],
+  task_templates: [],
+  messages: [],
+  shift_swaps: [],
+  notification_settings: { email: true, sms: false, push: false },
+  feature_flags: defaultFlags(),
+});
+
+const getInviteByToken = async (token, { includeOrgName = false } = {}) => {
+  if (!token) return null;
+  const select = [
+    "i.id",
+    "i.org_id",
+    "i.token",
+    "i.email",
+    "i.phone",
+    "i.full_name",
+    "i.role",
+    "i.location_id",
+    "i.invited_by",
+    "i.expires_at",
+    "i.accepted_at",
+    "i.created_at",
+    includeOrgName ? "o.name AS org_name" : null,
+  ].filter(Boolean).join(", ");
+  const from = includeOrgName ? "invites i JOIN orgs o ON o.id = i.org_id" : "invites i";
+  const inviteRes = await query(`SELECT ${select} FROM ${from} WHERE i.token = $1`, [token]);
+  const invite = inviteRes.rows[0];
+  if (!invite) return null;
+  if (invite.accepted_at) return { error: "invalid_invite" };
+  if (new Date(invite.expires_at) < new Date()) return { error: "invalid_invite" };
+  return invite;
+};
+
 app.get("/api/health", async (req, res) => {
   const diagnostics = { env: process.env.NODE_ENV || "development", timestamp: new Date().toISOString() };
   try {
@@ -439,6 +481,147 @@ app.post("/api/notify", auth, async (req, res) => {
     await sendPush({ subscriptions: subs, title, body });
   }
   res.json({ ok: true });
+});
+
+app.post("/api/invite", auth, async (req, res) => {
+  if (!["manager", "owner"].includes(req.user.role)) return res.status(403).json({ error: "forbidden" });
+
+  const { full_name, email, phone, role, location_id } = req.body || {};
+  const trimmedName = String(full_name || "").trim();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const trimmedPhone = String(phone || "").trim();
+  const inviteRole = String(role || "employee").trim().toLowerCase();
+
+  if (!trimmedName || (!normalizedEmail && !trimmedPhone)) {
+    return res.status(400).json({ error: "missing_fields" });
+  }
+  if (!["employee", "manager"].includes(inviteRole)) {
+    return res.status(400).json({ error: "forbidden" });
+  }
+
+  let nextLocationId = location_id || null;
+  if (nextLocationId) {
+    const locationRes = await query("SELECT id FROM locations WHERE id = $1 AND org_id = $2", [nextLocationId, req.user.org_id]);
+    if (!locationRes.rows[0]) return res.status(404).json({ error: "not_found" });
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  const inviteRes = await query(
+    "INSERT INTO invites (org_id, token, email, phone, full_name, role, location_id, invited_by, expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+    [req.user.org_id, token, normalizedEmail || null, trimmedPhone || null, trimmedName, inviteRole, nextLocationId, req.user.id, expiresAt]
+  );
+
+  const inviteUrl = `${APP_URL}/invite/accept?token=${token}`;
+  const message = `You have been invited to Shiftway. Accept your invite here: ${inviteUrl}`;
+
+  if (normalizedEmail) {
+    await sendEmail({
+      to: normalizedEmail,
+      subject: "You have been invited to Shiftway",
+      text: message,
+    });
+  }
+  if (trimmedPhone && smsClient) {
+    await sendSms({ to: trimmedPhone, body: message });
+  }
+
+  res.json({ ok: true, invite_id: inviteRes.rows[0].id, invite_url: inviteUrl });
+});
+
+app.get("/api/invite/verify", async (req, res) => {
+  const token = String(req.query.token || "").trim();
+  if (!token) return res.status(400).json({ error: "missing_token" });
+
+  const invite = await getInviteByToken(token, { includeOrgName: true });
+  if (!invite || invite.error) return res.status(400).json({ error: "invalid_invite" });
+
+  res.json({
+    ok: true,
+    full_name: invite.full_name,
+    email: invite.email,
+    role: invite.role,
+    org_name: invite.org_name,
+  });
+});
+
+app.post("/api/invite/accept", async (req, res) => {
+  const { token, password, full_name } = req.body || {};
+  const inviteToken = String(token || "").trim();
+  const trimmedName = String(full_name || "").trim();
+  const rawPassword = String(password || "");
+
+  if (!inviteToken) return res.status(400).json({ error: "missing_token" });
+  if (!trimmedName || !rawPassword) return res.status(400).json({ error: "missing_fields" });
+
+  const invite = await getInviteByToken(inviteToken);
+  if (!invite || invite.error) return res.status(400).json({ error: "invalid_invite" });
+
+  const passwordHash = await bcrypt.hash(rawPassword, 10);
+  const fallbackEmail = `invite+${invite.id}@phone.shiftway.local`;
+  const userEmail = String(invite.email || fallbackEmail).toLowerCase();
+
+  const client = pool ? await pool.connect() : null;
+  if (!client) {
+    throw new Error(
+      "Missing DATABASE_URL. Create server/.env from server/.env.example and set DATABASE_URL (Postgres connection string)."
+    );
+  }
+
+  try {
+    await client.query("BEGIN");
+
+    const existingUserRes = await client.query("SELECT id FROM users WHERE email = $1", [userEmail]);
+    if (existingUserRes.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "email_in_use" });
+    }
+
+    const userRes = await client.query(
+      "INSERT INTO users (org_id, location_id, full_name, email, password_hash, role, is_active) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING *",
+      [invite.org_id, invite.location_id, trimmedName, userEmail, passwordHash, invite.role]
+    );
+    const user = userRes.rows[0];
+
+    await client.query("UPDATE invites SET accepted_at = now() WHERE id = $1", [invite.id]);
+
+    const stateRes = await client.query("SELECT data FROM org_state WHERE org_id = $1", [invite.org_id]);
+    const state = stateRes.rows[0]?.data || emptyOrgState();
+    const nextUsers = Array.isArray(state.users) ? [...state.users] : [];
+    nextUsers.push({
+      id: user.id,
+      location_id: user.location_id,
+      full_name: user.full_name,
+      email: invite.email || "",
+      role: user.role,
+      is_active: user.is_active,
+      phone: invite.phone || "",
+      birthday: "",
+      pronouns: "",
+      emergency_contact: { name: "", phone: "" },
+      attachments: [],
+      notes: "",
+    });
+    const nextState = { ...emptyOrgState(), ...state, users: nextUsers };
+
+    await client.query(
+      "INSERT INTO org_state (org_id, data, updated_at) VALUES ($1,$2,now()) ON CONFLICT (org_id) DO UPDATE SET data = $2, updated_at = now()",
+      [invite.org_id, nextState]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ token: signToken(user), user: sanitizeUser(user) });
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore rollback errors after failure
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
 });
 
 function sanitizeUser(user) {

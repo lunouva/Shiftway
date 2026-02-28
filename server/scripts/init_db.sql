@@ -47,3 +47,18 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(user_id, endpoint)
 );
+
+CREATE TABLE IF NOT EXISTS invites (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+  token text NOT NULL UNIQUE,
+  email text,
+  phone text,
+  full_name text NOT NULL,
+  role text NOT NULL DEFAULT 'employee',
+  location_id uuid REFERENCES locations(id) ON DELETE SET NULL,
+  invited_by uuid REFERENCES users(id) ON DELETE SET NULL,
+  expires_at timestamptz NOT NULL,
+  accepted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

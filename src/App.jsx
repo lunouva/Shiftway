@@ -225,6 +225,7 @@ const friendlyApiError = (code) => {
     missing_fields: "Please fill in all required fields.",
     missing_email: "Please enter an email address.",
     email_in_use: "That email is already in use. Try signing in instead.",
+    invalid_invite: "This invite link is invalid, expired, or has already been used.",
     invalid_credentials: "Invalid email or password.",
     missing_token: "Your session is missing. Please sign in again.",
     invalid_token: "Your login link or session is no longer valid. Please sign in again.",
@@ -631,6 +632,7 @@ export default function App() {
   const [clientSettings, setClientSettings] = useState(loadClientSettings);
   const backendMode = !DEMO_MODE;
   const apiBase = getApiBase(clientSettings);
+  const isInviteAcceptRoute = window.location.pathname === "/invite/accept";
   const [data, setData] = useState(loadData);
   const [loading, setLoading] = useState(backendMode);
   const [hydrated, setHydrated] = useState(!backendMode);
@@ -644,6 +646,7 @@ export default function App() {
 
   const [shiftModal, setShiftModal] = useState({ open: false, preUserId: null, preDay: null });
   const [swapModal, setSwapModal] = useState({ open: false, shift: null });
+  const [inviteModal, setInviteModal] = useState(false);
 
   const location = data.locations.find((l) => l.id === locationId) || data.locations[0];
   const users = data.users.filter((u) => u.location_id === location.id && u.is_active);
@@ -683,6 +686,7 @@ export default function App() {
   }, [weekStart]);
 
   useEffect(() => {
+    if (isInviteAcceptRoute) return;
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     if (token) {
@@ -691,7 +695,7 @@ export default function App() {
       const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}${window.location.hash || ""}`;
       window.history.replaceState({}, "", next);
     }
-  }, []);
+  }, [isInviteAcceptRoute]);
 
   useEffect(() => {
     if (!backendMode) {
@@ -1013,6 +1017,10 @@ export default function App() {
     }
   };
 
+  if (isInviteAcceptRoute) {
+    return <InviteAcceptPage clientSettings={clientSettings} />;
+  }
+
   return (
     <AuthProvider
       data={data}
@@ -1055,6 +1063,8 @@ export default function App() {
         setShiftModal={setShiftModal}
         swapModal={swapModal}
         setSwapModal={setSwapModal}
+        inviteModal={inviteModal}
+        setInviteModal={setInviteModal}
         addEmployee={addEmployee}
         addPosition={(name) => setData((d) => ({ ...d, positions: [...d.positions, { id: uid(), location_id: location.id, name }] }))}
         createTimeOff={createTimeOff}
@@ -1081,7 +1091,7 @@ function InnerApp(props) {
   const {
     data, setData, clientSettings, setClientSettings, backendMode, apiBase, apiError, setApiError, loading, tab, setTab, locationId, setLocationId, weekStart, setWeekStart,
     users, positions, positionsById, weekDays, schedule, ensureSchedule, createShift, deleteShift,
-    publish, totalHoursByUser, totalHoursByDay, copyCsv, exportCsv, resetDemo, shiftModal, setShiftModal, swapModal, setSwapModal,
+    publish, totalHoursByUser, totalHoursByDay, copyCsv, exportCsv, resetDemo, shiftModal, setShiftModal, swapModal, setSwapModal, inviteModal, setInviteModal,
     addEmployee, addPosition, createTimeOff, setTimeOffStatus, createSwapRequest, setSwapStatus, addUnavailability, updateUnavailability, deleteUnavailability, unavailability,
     addPost, addTask, setTaskStatus, deleteTask, addTemplate, deleteTemplate, sendMessage,
   } = props;
@@ -1269,7 +1279,10 @@ function InnerApp(props) {
       )}
 
       {isManager && tab === "employees" && (
-        <Section title="Employees">
+        <Section
+          title="Employees"
+          right={<button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={() => setInviteModal(true)}>Invite Employee</button>}
+        >
           <div className="grid gap-4 md:grid-cols-[1fr,2fr]">
             <AddEmployeeForm onAdd={addEmployee} />
             <div>
@@ -1499,6 +1512,13 @@ function InnerApp(props) {
         onSubmit={createSwapRequest}
       />
 
+      <InviteModal
+        open={inviteModal}
+        onClose={() => setInviteModal(false)}
+        locations={data.locations}
+        clientSettings={clientSettings}
+      />
+
       <footer className="py-8 text-center text-xs text-gray-500">Shiftway scheduling app.</footer>
     </div>
   );
@@ -1511,6 +1531,118 @@ function TabBtn({ id, tab, setTab, label }) {
 }
 
 // ---------- forms & modals ----------
+function InviteModal({ open, onClose, locations, clientSettings }) {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState("employee");
+  const [locationId, setLocationId] = useState(locations[0]?.id || "");
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(null);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setLocationId((prev) => prev || locations[0]?.id || "");
+  }, [locations, open]);
+
+  const reset = () => {
+    setFullName("");
+    setEmail("");
+    setPhone("");
+    setRole("employee");
+    setLocationId(locations[0]?.id || "");
+    setSubmitting(false);
+    setSuccess(null);
+    setErr("");
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    setErr("");
+    setSuccess(null);
+    if (!fullName.trim() || (!email.trim() && !phone.trim())) {
+      setErr("Enter a full name and at least one contact method.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const res = await apiFetch("/api/invite", {
+        token,
+        method: "POST",
+        body: {
+          full_name: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          role,
+          location_id: locationId || null,
+        },
+      }, clientSettings);
+      setSuccess(res);
+    } catch (e) {
+      setErr(e.message || "Unable to send invite");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="Invite employee"
+      footer={
+        <>
+          <button className="rounded-xl border px-3 py-2 text-sm" onClick={handleClose}>Cancel</button>
+          <button className="rounded-xl border bg-black px-3 py-2 text-sm text-white" disabled={submitting} onClick={handleSubmit}>
+            {submitting ? "Sending..." : "Send invite"}
+          </button>
+        </>
+      }
+    >
+      {err && <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">{err}</div>}
+      {success && (
+        <div className="rounded-xl border border-green-300 bg-green-50 p-3 text-sm text-green-700">
+          <div className="font-medium">Invite sent.</div>
+          <div className="mt-1 break-all text-xs">{success.invite_url}</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button className="rounded-xl border border-green-300 bg-white px-3 py-2 text-xs text-green-700" onClick={() => navigator.clipboard.writeText(success.invite_url).then(() => alert("Invite link copied to clipboard")).catch(() => alert("Copy failed. Copy the link manually."))}>Copy link</button>
+          </div>
+        </div>
+      )}
+      <div className="grid gap-3 md:grid-cols-2">
+        <TextInput label="Full Name" value={fullName} onChange={setFullName} placeholder="Jane Doe" />
+        <TextInput label="Email" value={email} onChange={setEmail} type="email" placeholder="jane@example.com" />
+        <TextInput label="Phone" value={phone} onChange={setPhone} placeholder="555-0123" />
+        <Select
+          label="Role"
+          value={role}
+          onChange={setRole}
+          options={[
+            { value: "employee", label: "Employee" },
+            { value: "manager", label: "Manager" },
+          ]}
+        />
+        <div className="md:col-span-2">
+          <Select
+            label="Location"
+            value={locationId}
+            onChange={setLocationId}
+            options={locations.map((location) => ({ value: location.id, label: location.name }))}
+          />
+        </div>
+      </div>
+      <div className="text-xs text-gray-600">If email or SMS delivery is not configured, use the invite link above to share access manually.</div>
+    </Modal>
+  );
+}
+
 function AddEmployeeForm({ onAdd }) {
   const [full_name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -1677,6 +1809,93 @@ function ManagerQuickUnavailability({ users, onSubmit }) {
 }
 
 // ---------- auth + employee pages ----------
+function InviteAcceptPage({ clientSettings }) {
+  const [loading, setLoading] = useState(true);
+  const [invite, setInvite] = useState(null);
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const inviteToken = new URLSearchParams(window.location.search).get("token") || "";
+
+  useEffect(() => {
+    if (!inviteToken) {
+      setErr("Invite token is missing.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setErr("");
+    apiFetch(`/api/invite/verify?token=${encodeURIComponent(inviteToken)}`, {}, clientSettings)
+      .then((res) => {
+        setInvite(res);
+        setFullName(res.full_name || "");
+      })
+      .catch((e) => {
+        setErr(e.message || "Unable to verify invite");
+      })
+      .finally(() => setLoading(false));
+  }, [clientSettings, inviteToken]);
+
+  const handleAccept = async () => {
+    setErr("");
+    if (!fullName.trim() || !password) {
+      setErr("Please fill in all required fields.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErr("Passwords do not match.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await apiFetch("/api/invite/accept", {
+        method: "POST",
+        body: {
+          token: inviteToken,
+          password,
+          full_name: fullName.trim(),
+        },
+      }, clientSettings);
+      if (res?.token) localStorage.setItem(TOKEN_KEY, res.token);
+      window.location.href = `${window.location.origin}/`;
+    } catch (e) {
+      setErr(e.message || "Unable to accept invite");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center p-6">
+      <div className="w-full rounded-2xl border p-6 shadow-sm">
+        <h1 className="mb-1 text-2xl font-black">Shiftway</h1>
+        <div className="mb-4 text-gray-600">Accept your invite</div>
+        {err && <div className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{err}</div>}
+        {loading && <div className="rounded-xl border p-3 text-sm">Verifying your invite…</div>}
+        {!loading && invite && (
+          <div className="grid gap-3">
+            <div className="rounded-xl border bg-gray-50 p-3 text-sm">
+              <div className="font-medium">Welcome to {invite.org_name}</div>
+              <div className="text-gray-600">{invite.role === "manager" ? "Manager" : "Employee"} invite{invite.email ? ` for ${invite.email}` : ""}</div>
+            </div>
+            <TextInput label="Full Name" value={fullName} onChange={setFullName} />
+            <TextInput label="Password" value={password} onChange={setPassword} type="password" />
+            <TextInput label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} type="password" />
+            <button className="mt-1 rounded-xl border bg-black px-3 py-2 text-sm font-medium text-white" disabled={submitting} onClick={handleAccept}>
+              {submitting ? "Creating account..." : "Accept invite"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LoginPage({ onAfterLogin, backendMode }) {
   const { login, registerCompany, requestMagicLink, loginWithGoogle, backendMode: authBackendMode } = useAuth();
   const isLive = backendMode ?? authBackendMode;
