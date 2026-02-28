@@ -860,8 +860,8 @@ function WeekGrid({
       </div>
 
       <div className="hidden overflow-x-auto md:block">
-        <div className="min-w-[1380px] rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
-          <div className="grid grid-cols-[240px_repeat(7,minmax(160px,1fr))_88px]">
+        <div className="w-full rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
+          <div className="grid grid-cols-[180px_repeat(7,minmax(0,1fr))_72px]">
             <div className="sticky left-0 z-20 rounded-tl-[1.5rem] bg-white px-4 py-4 text-sm font-bold text-brand-text">Team</div>
             {weekDays.map((d, index) => {
               const dayKey = fmtDate(d);
@@ -944,27 +944,25 @@ function WeekGrid({
                           ))}
                           {dayShifts.map((s) => {
                             const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
+                            const posName = positionsById[s.position_id]?.name || "—";
                             return (
-                              <div key={s.id} className={`group rounded-xl border border-brand-light bg-white px-3 py-3 shadow-sm transition duration-150 hover:scale-[1.02] hover:shadow-md ${tone.border}`}>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-start gap-2">
-                                    <AvatarBadge name={emp.full_name} className="h-6 w-6 text-[10px] shrink-0" />
-                                    <div>
-                                      <div className="font-semibold text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
-                                      <div className="text-xs text-gray-500">{positionsById[s.position_id]?.name || "—"}</div>
-                                    </div>
+                              <div key={s.id} className={`group relative rounded-lg border-l-4 bg-white px-2 py-1.5 shadow-sm transition duration-150 hover:shadow-md ${tone.border}`}>
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-xs font-bold text-brand-text">{fmtTime(s.starts_at)}–{fmtTime(s.ends_at)}</div>
+                                    <div className="truncate text-[10px] text-gray-400">{posName}</div>
                                   </div>
-                                  <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
-                                    {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Request swap">⇄</button>}
-                                    {onMarkOpen && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onMarkOpen(s.id)} title="Mark open">◌</button>}
-                                    <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onDelete(s.id)} title="Delete">✕</button>
+                                  <div className="flex shrink-0 gap-0.5 opacity-0 transition group-hover:opacity-100">
+                                    {onSwap && <button className="rounded p-1 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Request swap">⇄</button>}
+                                    {onMarkOpen && <button className="rounded p-1 text-brand-dark hover:bg-brand-lightest" onClick={() => onMarkOpen(s.id)} title="Mark open">◌</button>}
+                                    <button className="rounded p-1 text-brand-dark hover:bg-brand-lightest" onClick={() => onDelete(s.id)} title="Delete">✕</button>
                                   </div>
                                 </div>
                               </div>
                             );
                           })}
                           {dayShifts.length === 0 && (
-                            <button className="flex min-h-12 items-center justify-center rounded-xl border border-dashed border-brand/30 text-sm font-medium text-brand-dark transition hover:border-brand hover:bg-white" onClick={() => onCreate(emp.id, day)}>
+                            <button className="flex min-h-8 items-center justify-center rounded-lg border border-dashed border-brand/30 text-xs font-medium text-brand-dark/50 transition hover:border-brand hover:bg-white hover:text-brand-dark" onClick={() => onCreate(emp.id, day)}>
                               +
                             </button>
                           )}
