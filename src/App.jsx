@@ -436,10 +436,10 @@ function Modal({ open, onClose, title, children, footer }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-2xl border border-brand-light bg-brand-lightest p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button className="rounded-xl border px-2 py-1 text-sm" onClick={onClose}>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-sm text-brand-dark transition hover:bg-brand-light" onClick={onClose}>
             Close
           </button>
         </div>
@@ -577,15 +577,15 @@ function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, 
     <div className="overflow-x-auto">
       <div className="min-w-[1000px]">
         <div className="grid grid-cols-[220px_repeat(7,1fr)]">
-          <div className="sticky left-0 z-10 bg-gray-50 p-2 font-semibold">Employee</div>
+          <div className="sticky left-0 z-10 bg-brand-lightest p-2 font-semibold text-brand-text">Employee</div>
           {weekDays.map((d) => (
-            <div key={String(d)} className="p-2 text-center font-semibold bg-gray-50">
+            <div key={String(d)} className="bg-brand-lightest p-2 text-center font-semibold text-brand-text">
               {fmtDateLabel(d)}
             </div>
           ))}
           {employees.map((emp) => (
             <React.Fragment key={emp.id}>
-              <div className="sticky left-0 z-10 border-t bg-white p-2 font-medium">{emp.full_name}</div>
+              <div className="sticky left-0 z-10 border-t bg-brand-lightest p-2 font-medium text-brand-text">{emp.full_name}</div>
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((s) => s.user_id === emp.id && fmtDate(s.starts_at) === fmtDate(day));
                 const dayUnav = (byUserUnav[emp.id] || []).filter((ua) =>
@@ -609,12 +609,12 @@ function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, 
                         <div key={s.id} className="rounded-xl border px-2 py-1 text-sm shadow-sm">
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium">{fmtTime(s.starts_at)} – {fmtTime(s.ends_at)}</div>
-                            <button className="text-xs underline" onClick={() => onDelete(s.id)}>delete</button>
+                            <button className="text-xs text-brand-dark underline" onClick={() => onDelete(s.id)}>delete</button>
                           </div>
                           <div className="text-xs text-gray-600">{positionsById[s.position_id]?.name || "—"}</div>
                         </div>
                       ))}
-                      <button className="text-xs underline" onClick={() => onCreate(emp.id, day)}>+ add</button>
+                      <button className="text-xs text-brand-dark underline" onClick={() => onCreate(emp.id, day)}>+ add</button>
                     </div>
                   </div>
                 );
@@ -1137,8 +1137,8 @@ function InnerApp(props) {
     <div className="mx-auto max-w-6xl space-y-6 p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="grid place-items-center rounded-2xl border bg-white p-2 shadow-sm">
-            <div className="h-8 w-8 rounded-xl border" />
+          <div className="grid place-items-center rounded-2xl border border-brand-light bg-brand-lightest p-2 shadow-sm">
+            <div className="h-8 w-8 rounded-xl border border-brand-light bg-brand" />
           </div>
           <div>
             <h1 className="text-2xl font-black">Shiftway</h1>
@@ -1146,7 +1146,7 @@ function InnerApp(props) {
           </div>
         </div>
         <Toolbar>
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border px-3 py-2 text-sm">
+          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm">
             <span className="text-gray-600">Location</span>
             <select className="outline-none" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
               {data.locations.map((l) => (
@@ -1154,15 +1154,15 @@ function InnerApp(props) {
               ))}
             </select>
           </div>
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border px-3 py-2 text-sm">
+          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm">
             <span className="text-gray-600">Week</span>
-            <button className="rounded-lg border px-2 py-1" title="Prev week" onClick={()=>shiftWeek(-1)}>◀</button>
+            <button className="rounded-lg border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" title="Prev week" onClick={()=>shiftWeek(-1)}>◀</button>
             <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="outline-none" />
-            <button className="rounded-lg border px-2 py-1" title="Jump to current week" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
-            <button className="rounded-lg border px-2 py-1" title="Next week" onClick={()=>shiftWeek(1)}>▶</button>
+            <button className="rounded-lg border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" title="Jump to current week" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
+            <button className="rounded-lg border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" title="Next week" onClick={()=>shiftWeek(1)}>▶</button>
           </div>
-          <div className="rounded-xl border px-3 py-2 text-sm">{currentUser.full_name} <span className="text-gray-500">({currentUser.role})</span></div>
-          <button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={logout}>Logout</button>
+          <div className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm">{currentUser.full_name} <span className="text-gray-500">({currentUser.role})</span></div>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light" onClick={logout}>Logout</button>
         </Toolbar>
       </header>
 
@@ -1174,7 +1174,7 @@ function InnerApp(props) {
               <div className="text-xs text-red-900/80">{apiError}</div>
               <div className="mt-1 text-xs text-red-900/80">Make sure the server is running and CORS allows this origin. If deployed, set <code>VITE_API_BASE</code>. Current API base: <code>{apiBase}</code>.</div>
             </div>
-            <button className="rounded-xl border border-red-300 bg-white px-3 py-2 text-xs" onClick={()=>setApiError(null)}>Dismiss</button>
+            <button className="rounded-xl border border-red-300 bg-brand-lightest px-3 py-2 text-xs text-brand-text" onClick={()=>setApiError(null)}>Dismiss</button>
           </div>
         </div>
       )}
@@ -1251,12 +1251,12 @@ function InnerApp(props) {
           )}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={() => ensureSchedule()}>Ensure Week</button>
-            <button disabled={!schedule} className={`rounded-xl border px-3 py-2 text-sm shadow-sm ${schedule?.status === "published" ? "bg-green-50" : ""}`} onClick={publish}>{schedule?.status === "published" ? "Unpublish" : "Publish"}</button>
-            <button disabled={!schedule} className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={copyCsv}>Copy CSV</button>
-            <button disabled={!schedule} className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={exportCsv}>Download CSV</button>
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => ensureSchedule()}>Ensure Week</button>
+            <button disabled={!schedule} className={`rounded-xl border px-3 py-2 text-sm shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${schedule?.status === "published" ? "border-brand-light bg-brand-light text-brand-text hover:bg-brand" : "border-brand-dark bg-brand-dark text-white hover:bg-brand-darker"}`} onClick={publish}>{schedule?.status === "published" ? "Unpublish" : "Publish"}</button>
+            <button disabled={!schedule} className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60" onClick={copyCsv}>Copy CSV</button>
+            <button disabled={!schedule} className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60" onClick={exportCsv}>Download CSV</button>
             {DEMO_MODE && SHOW_DEMO_CONTROLS && (
-              <button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={resetDemo}>Reset Demo</button>
+              <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light" onClick={resetDemo}>Reset Demo</button>
             )}
           </div>
 
@@ -1281,7 +1281,7 @@ function InnerApp(props) {
       {isManager && tab === "employees" && (
         <Section
           title="Employees"
-          right={<button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={() => setInviteModal(true)}>Invite Employee</button>}
+          right={<button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => setInviteModal(true)}>Invite Employee</button>}
         >
           <div className="grid gap-4 md:grid-cols-[1fr,2fr]">
             <AddEmployeeForm onAdd={addEmployee} />
@@ -1443,7 +1443,7 @@ function InnerApp(props) {
               </div>
               {backendMode && (
                 <div className="mt-2">
-                  <button className="rounded-xl border px-3 py-2 text-sm" onClick={enablePush}>Enable push notifications</button>
+                  <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={enablePush}>Enable push notifications</button>
                 </div>
               )}
             </div>
@@ -1526,7 +1526,7 @@ function InnerApp(props) {
 
 function TabBtn({ id, tab, setTab, label }) {
   return (
-    <button onClick={() => setTab(id)} className={`rounded-full px-4 py-1 text-sm ${tab === id ? "bg-black text-white" : "border"}`}>{label}</button>
+    <button onClick={() => setTab(id)} className={`rounded-full px-4 py-1 text-sm ${tab === id ? "bg-brand text-brand-text" : "border border-brand-light bg-brand-lightest text-brand-dark hover:bg-brand-light"}`}>{label}</button>
   );
 }
 
@@ -1599,8 +1599,8 @@ function InviteModal({ open, onClose, locations, clientSettings }) {
       title="Invite employee"
       footer={
         <>
-          <button className="rounded-xl border px-3 py-2 text-sm" onClick={handleClose}>Cancel</button>
-          <button className="rounded-xl border bg-black px-3 py-2 text-sm text-white" disabled={submitting} onClick={handleSubmit}>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={handleClose}>Cancel</button>
+          <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker disabled:cursor-not-allowed disabled:opacity-60" disabled={submitting} onClick={handleSubmit}>
             {submitting ? "Sending..." : "Send invite"}
           </button>
         </>
@@ -1612,7 +1612,7 @@ function InviteModal({ open, onClose, locations, clientSettings }) {
           <div className="font-medium">Invite sent.</div>
           <div className="mt-1 break-all text-xs">{success.invite_url}</div>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button className="rounded-xl border border-green-300 bg-white px-3 py-2 text-xs text-green-700" onClick={() => navigator.clipboard.writeText(success.invite_url).then(() => alert("Invite link copied to clipboard")).catch(() => alert("Copy failed. Copy the link manually."))}>Copy link</button>
+            <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-xs text-brand-dark transition hover:bg-brand-light" onClick={() => navigator.clipboard.writeText(success.invite_url).then(() => alert("Invite link copied to clipboard")).catch(() => alert("Copy failed. Copy the link manually."))}>Copy link</button>
           </div>
         </div>
       )}
@@ -1685,7 +1685,7 @@ function AddEmployeeForm({ onAdd }) {
         </div>
       </div>
       <div className="mt-3 flex justify-end">
-        <button className="rounded-xl border px-3 py-2 text-sm shadow-sm" onClick={() => { if (!full_name.trim()) return alert("Enter a name"); onAdd({ full_name: full_name.trim(), email: email.trim(), role, phone, birthday, pronouns, emergency_contact: { name: emName, phone: emPhone }, attachments: filesMeta, notes }); setName(""); setEmail(""); setRole("employee"); setPhone(""); setBirthday(""); setPronouns(""); setEmName(""); setEmPhone(""); setFilesMeta([]); setNotes(""); }}>Add</button>
+        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => { if (!full_name.trim()) return alert("Enter a name"); onAdd({ full_name: full_name.trim(), email: email.trim(), role, phone, birthday, pronouns, emergency_contact: { name: emName, phone: emPhone }, attachments: filesMeta, notes }); setName(""); setEmail(""); setRole("employee"); setPhone(""); setBirthday(""); setPronouns(""); setEmName(""); setEmPhone(""); setFilesMeta([]); setNotes(""); }}>Add</button>
       </div>
     </div>
   );
@@ -1700,7 +1700,7 @@ function AddPositionForm({ onAdd }) {
         <TextInput label="Name" value={name} onChange={setName} placeholder="Scooper" />
       </div>
       <div className="mt-3 flex justify-end">
-        <button className="rounded-2xl border px-3 py-2 text-sm shadow-sm" onClick={() => { if (!name.trim()) return alert("Enter a name"); onAdd(name.trim()); setName(""); }}>Add</button>
+        <button className="rounded-2xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => { if (!name.trim()) return alert("Enter a name"); onAdd(name.trim()); setName(""); }}>Add</button>
       </div>
     </div>
   );
@@ -1729,8 +1729,8 @@ function ShiftEditorModal({ open, onClose, users, positions, defaultUserId, defa
       title="Add shift"
       footer={
         <>
-          <button className="rounded-xl border px-3 py-2 text-sm" onClick={onClose}>Cancel</button>
-          <button className="rounded-xl border bg-black px-3 py-2 text-sm text-white" onClick={() => { if (!userId || !positionId) return alert("Pick employee & position"); onCreate({ user_id: userId, position_id: positionId, day, start_hhmm: start, end_hhmm: end, break_min: breakMin, notes, quickTaskTitle, quickTaskTemplateId: templateId }); setQuickTaskTitle(""); setTemplateId(""); onClose(); }}>Save shift</button>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={onClose}>Cancel</button>
+          <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={() => { if (!userId || !positionId) return alert("Pick employee & position"); onCreate({ user_id: userId, position_id: positionId, day, start_hhmm: start, end_hhmm: end, break_min: breakMin, notes, quickTaskTitle, quickTaskTemplateId: templateId }); setQuickTaskTitle(""); setTemplateId(""); onClose(); }}>Save shift</button>
         </>
       }
     >
@@ -1785,7 +1785,7 @@ function ManagerQuickTimeOff({ users, onSubmit }) {
       <label className="grid gap-1 text-sm"><span className="text-gray-600">From</span><input type="date" value={from} onChange={(e)=>setFrom(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
       <label className="grid gap-1 text-sm"><span className="text-gray-600">To</span><input type="date" value={to} onChange={(e)=>setTo(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
       <TextInput label="Notes" value={notes} onChange={setNotes} placeholder="Optional" />
-      <div className="md:col-span-2 flex justify-end"><button className="rounded-xl border px-3 py-2 text-sm" onClick={()=> onSubmit({ user_id: userId, date_from: from, date_to: to, notes })}>Submit</button></div>
+      <div className="md:col-span-2 flex justify-end"><button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={()=> onSubmit({ user_id: userId, date_from: from, date_to: to, notes })}>Submit</button></div>
     </div>
   );
 }
@@ -1803,7 +1803,7 @@ function ManagerQuickUnavailability({ users, onSubmit }) {
       <label className="grid gap-1 text-sm"><span className="text-gray-600">Start</span><input type="time" value={start} onChange={(e)=>setStart(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
       <label className="grid gap-1 text-sm"><span className="text-gray-600">End</span><input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
       <TextInput label="Notes" value={notes} onChange={setNotes} placeholder="Optional" />
-      <div className="md:col-span-2 flex justify-end"><button className="rounded-xl border px-3 py-2 text-sm" onClick={()=> onSubmit({ user_id: userId, kind:'weekly', weekday: Number(weekday), start_hhmm: start, end_hhmm: end, notes })}>Add</button></div>
+      <div className="md:col-span-2 flex justify-end"><button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={()=> onSubmit({ user_id: userId, kind:'weekly', weekday: Number(weekday), start_hhmm: start, end_hhmm: end, notes })}>Add</button></div>
     </div>
   );
 }
@@ -1874,19 +1874,19 @@ function InviteAcceptPage({ clientSettings }) {
     <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center p-6">
       <div className="w-full rounded-2xl border p-6 shadow-sm">
         <h1 className="mb-1 text-2xl font-black">Shiftway</h1>
-        <div className="mb-4 text-gray-600">Accept your invite</div>
+        <div className="mb-4 text-brand-dark">Accept your invite</div>
         {err && <div className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{err}</div>}
         {loading && <div className="rounded-xl border p-3 text-sm">Verifying your invite…</div>}
         {!loading && invite && (
           <div className="grid gap-3">
-            <div className="rounded-xl border bg-gray-50 p-3 text-sm">
+            <div className="rounded-xl border border-brand-light bg-brand-lightest p-3 text-sm">
               <div className="font-medium">Welcome to {invite.org_name}</div>
               <div className="text-gray-600">{invite.role === "manager" ? "Manager" : "Employee"} invite{invite.email ? ` for ${invite.email}` : ""}</div>
             </div>
             <TextInput label="Full Name" value={fullName} onChange={setFullName} />
             <TextInput label="Password" value={password} onChange={setPassword} type="password" />
             <TextInput label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} type="password" />
-            <button className="mt-1 rounded-xl border bg-black px-3 py-2 text-sm font-medium text-white" disabled={submitting} onClick={handleAccept}>
+            <button className="mt-1 rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-darker disabled:cursor-not-allowed disabled:opacity-60" disabled={submitting} onClick={handleAccept}>
               {submitting ? "Creating account..." : "Accept invite"}
             </button>
           </div>
@@ -1947,7 +1947,7 @@ function LoginPage({ onAfterLogin, backendMode }) {
     <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center p-6">
       <div className="w-full rounded-2xl border p-6 shadow-sm">
         <h1 className="mb-1 text-2xl font-black">Shiftway</h1>
-        <div className="mb-4 text-gray-600">{mode === "register" ? "Create your company" : mode === "magic" ? "Magic link" : "Sign in"}</div>
+        <div className="mb-4 text-brand-dark">{mode === "register" ? "Create your company" : mode === "magic" ? "Magic link" : "Sign in"}</div>
         {err && <div className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{err}</div>}
         {msg && <div className="mb-3 rounded-lg bg-green-50 p-2 text-sm text-green-700">{msg}</div>}
         <div className="grid gap-3">
@@ -1960,22 +1960,22 @@ function LoginPage({ onAfterLogin, backendMode }) {
           <TextInput label="Email" value={email} onChange={setEmail} type="email" />
           {mode !== "magic" && <TextInput label="Password" value={password} onChange={setPassword} type="password" />}
           {mode === "login" && (
-            <button className="mt-1 rounded-xl border bg-black px-3 py-2 text-sm font-medium text-white" onClick={handleLogin}>Sign in</button>
+            <button className="mt-1 rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={handleLogin}>Sign in</button>
           )}
           {mode === "register" && (
-            <button className="mt-1 rounded-xl border bg-black px-3 py-2 text-sm font-medium text-white" onClick={handleRegister}>Create account</button>
+            <button className="mt-1 rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={handleRegister}>Create account</button>
           )}
           {mode === "magic" && (
-            <button className="mt-1 rounded-xl border bg-black px-3 py-2 text-sm font-medium text-white" onClick={handleMagic}>Send magic link</button>
+            <button className="mt-1 rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={handleMagic}>Send magic link</button>
           )}
           {isLive && (
-            <button className="rounded-xl border px-3 py-2 text-sm" onClick={loginWithGoogle}>Continue with Google</button>
+            <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={loginWithGoogle}>Continue with Google</button>
           )}
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-600">
-          {mode !== "login" && <button className="underline" onClick={()=>setMode("login")}>Back to login</button>}
-          {mode !== "register" && <button className="underline" onClick={()=>setMode("register")}>Create company</button>}
-          {mode !== "magic" && <button className="underline" onClick={()=>setMode("magic")}>Use magic link</button>}
+          {mode !== "login" && <button className="text-brand-dark underline" onClick={()=>setMode("login")}>Back to login</button>}
+          {mode !== "register" && <button className="text-brand-dark underline" onClick={()=>setMode("register")}>Create company</button>}
+          {mode !== "magic" && <button className="text-brand-dark underline" onClick={()=>setMode("magic")}>Use magic link</button>}
         </div>
         {!isLive && (
           <div className="mt-4 text-xs text-gray-600">
@@ -2015,9 +2015,9 @@ function SwapRequestModal({ open, onClose, currentUser, users, schedule, shift, 
       title="Request a shift swap"
       footer={
         <>
-          <button className="rounded-xl border px-3 py-2 text-sm" onClick={onClose}>Cancel</button>
+          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={onClose}>Cancel</button>
           <button
-            className="rounded-xl border bg-black px-3 py-2 text-sm text-white"
+            className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker"
             onClick={() => {
               if (!peerId) return alert("Pick a coworker.");
               onSubmit({
@@ -2083,8 +2083,8 @@ function SwapPanel({ currentUser, users, schedules, swaps, onRequest, onSetStatu
                   <div className="text-gray-600">{renderShift(shiftById[s.from_shift_id])} ⇄ {renderShift(shiftById[s.to_shift_id])}</div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="rounded-xl border px-2 py-1" onClick={() => onSetStatus(s.id, "pending_manager")}>Accept</button>
-                  <button className="rounded-xl border px-2 py-1" onClick={() => onSetStatus(s.id, "denied")}>Decline</button>
+                  <button className="rounded-xl border border-brand-dark bg-brand-dark px-2 py-1 text-white transition hover:bg-brand-darker" onClick={() => onSetStatus(s.id, "pending_manager")}>Accept</button>
+                  <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={() => onSetStatus(s.id, "denied")}>Decline</button>
                 </div>
               </li>
             ))}
@@ -2104,8 +2104,8 @@ function SwapPanel({ currentUser, users, schedules, swaps, onRequest, onSetStatu
                   <div className="text-gray-600">{renderShift(shiftById[s.from_shift_id])} ⇄ {renderShift(shiftById[s.to_shift_id])}</div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="rounded-xl border px-2 py-1" onClick={() => onSetStatus(s.id, "approved")}>Approve</button>
-                  <button className="rounded-xl border px-2 py-1" onClick={() => onSetStatus(s.id, "denied")}>Deny</button>
+                  <button className="rounded-xl border border-brand-dark bg-brand-dark px-2 py-1 text-white transition hover:bg-brand-darker" onClick={() => onSetStatus(s.id, "approved")}>Approve</button>
+                  <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={() => onSetStatus(s.id, "denied")}>Deny</button>
                 </div>
               </li>
             ))}
@@ -2154,7 +2154,7 @@ function MyShifts({ currentUser, schedule, weekDays, positionsById, onSwapReques
                   <div className="font-medium">{fmtTime(s.starts_at)} – {fmtTime(s.ends_at)}</div>
                   <div className="text-xs text-gray-600">{positionsById[s.position_id]?.name || "—"} • Break: {s.break_min}m</div>
                   {onSwapRequest && (
-                    <button className="mt-2 text-xs underline" onClick={() => onSwapRequest(s)}>Request swap</button>
+                    <button className="mt-2 text-xs text-brand-dark underline" onClick={() => onSwapRequest(s)}>Request swap</button>
                   )}
                 </li>
               ))}
@@ -2188,7 +2188,7 @@ function TimeOffForm({ onSubmit }) {
         </label>
       </div>
       <div className="mt-3 flex justify-end">
-        <button className="rounded-xl border px-3 py-2 text-sm" onClick={() => onSubmit({ date_from: from, date_to: to, notes })}>Submit</button>
+        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={() => onSubmit({ date_from: from, date_to: to, notes })}>Submit</button>
       </div>
     </div>
   );
@@ -2225,8 +2225,8 @@ function MyUnavailabilityEditor({ currentUser, list, onAdd, onUpdate, onDelete }
         <div className="md:col-span-3"><TextInput label="Notes (optional)" value={notes} onChange={setNotes} placeholder="Class, commute, etc." /></div>
       </div>
       <div className="mt-3 flex justify-end gap-2">
-        {editingId && <button className="rounded-xl border px-3 py-2 text-sm" onClick={()=>{ setEditingId(null); setNotes(''); }}>Cancel</button>}
-        <button className="rounded-xl border px-3 py-2 text-sm" onClick={save}>{editingId ? 'Save' : 'Add'}</button>
+        {editingId && <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={()=>{ setEditingId(null); setNotes(''); }}>Cancel</button>}
+        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={save}>{editingId ? 'Save' : 'Add'}</button>
       </div>
       <div className="mt-3">
         <ul className="divide-y rounded-2xl border">
@@ -2238,8 +2238,8 @@ function MyUnavailabilityEditor({ currentUser, list, onAdd, onUpdate, onDelete }
                 {ua.notes && <div className="text-xs text-gray-600">{ua.notes}</div>}
               </div>
               <div className="flex gap-2">
-                <button className="rounded-xl border px-2 py-1" onClick={()=>beginEdit(ua)}>Edit</button>
-                <button className="rounded-xl border px-2 py-1" onClick={()=>onDelete(ua.id)}>Delete</button>
+                <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>beginEdit(ua)}>Edit</button>
+                <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>onDelete(ua.id)}>Delete</button>
               </div>
             </li>
           ))}
@@ -2309,8 +2309,8 @@ function UnavailabilityAdmin({ users, list, onAdd, onUpdate, onDelete }) {
           <label className="grid gap-1 text-sm"><span className="text-gray-600">End</span><input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
           <TextInput label="Notes (optional)" value={notes} onChange={setNotes} placeholder="Class, commute, etc." />
           <div className="flex justify-end gap-2">
-            {editing && <button className="rounded-xl border px-3 py-2 text-sm" onClick={()=>setEditing(null)}>Cancel</button>}
-            <button className="rounded-xl border px-3 py-2 text-sm" onClick={save}>{editing ? 'Save' : 'Add'}</button>
+            {editing && <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={()=>setEditing(null)}>Cancel</button>}
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={save}>{editing ? 'Save' : 'Add'}</button>
           </div>
         </div>
       </div>
@@ -2329,8 +2329,8 @@ function UnavailabilityAdmin({ users, list, onAdd, onUpdate, onDelete }) {
                     {ua.notes && <div className="text-xs text-gray-600">{ua.notes}</div>}
                   </div>
                   <div className="flex gap-2">
-                    <button className="rounded-xl border px-2 py-1" onClick={()=>beginEdit(ua)}>Edit</button>
-                    <button className="rounded-xl border px-2 py-1" onClick={()=>onDelete(ua.id)}>Delete</button>
+                    <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>beginEdit(ua)}>Edit</button>
+                    <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>onDelete(ua.id)}>Delete</button>
                   </div>
                 </li>
               ))}
@@ -2352,7 +2352,7 @@ function NewsFeed({ users, currentUser, posts, onPost, allowPost }) {
         <div className="rounded-2xl border p-3">
           <TextInput label="Share an update" value={body} onChange={setBody} placeholder="Post an announcement..." />
           <div className="mt-2 flex justify-end">
-            <button className="rounded-xl border px-3 py-2 text-sm" onClick={()=>{ onPost(body); setBody(""); }}>Post</button>
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={()=>{ onPost(body); setBody(""); }}>Post</button>
           </div>
         </div>
       )}
@@ -2381,24 +2381,24 @@ function TasksPanel({ users, currentUser, tasks, templates, onAdd, onSetStatus, 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr,2fr]">
       <div className="space-y-4">
-        <div className="rounded-2xl border p-3">
+        {currentUser.role!=='employee' && <div className="rounded-2xl border p-3">
           <h4 className="mb-2 font-semibold">Create task</h4>
           <div className="grid gap-3">
             <TextInput label="Title" value={title} onChange={setTitle} placeholder="Clean front counter" />
-            {currentUser.role!=='employee' && <Select label="Assign to" value={assignee} onChange={setAssignee} options={users.map(u=>({value:u.id,label:u.full_name}))} />}
+            <Select label="Assign to" value={assignee} onChange={setAssignee} options={users.map(u=>({value:u.id,label:u.full_name}))} />
             <label className="grid gap-1 text-sm"><span className="text-gray-600">Due date</span><input type="date" value={due} onChange={(e)=>setDue(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
             <div className="flex justify-end">
-              <button className="rounded-xl border px-3 py-2 text-sm" onClick={()=>{ onAdd(title, currentUser.role==='employee'? currentUser.id : assignee, due, currentUser.id); setTitle(''); }}>Add</button>
+              <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={()=>{ onAdd(title, assignee, due, currentUser.id); setTitle(''); }}>Add</button>
             </div>
           </div>
-        </div>
+        </div>}
 
         {currentUser.role!=='employee' && (
           <div className="rounded-2xl border p-3">
             <h4 className="mb-2 font-semibold">Task templates</h4>
             <div className="grid gap-2 md:grid-cols-[1fr_auto]">
               <TextInput label="New template title" value={newTpl} onChange={setNewTpl} placeholder="Mop floor at close" />
-              <div className="flex items-end"><button className="rounded-xl border px-3 py-2 text-sm" onClick={()=>{ if(!newTpl.trim()) return; onAddTemplate(newTpl.trim()); setNewTpl(''); }}>Add template</button></div>
+              <div className="flex items-end"><button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={()=>{ if(!newTpl.trim()) return; onAddTemplate(newTpl.trim()); setNewTpl(''); }}>Add template</button></div>
             </div>
             <ul className="mt-2 divide-y rounded-xl border">
               {templates.length===0 && <li className="p-3 text-sm text-gray-600">No templates yet.</li>}
@@ -2410,7 +2410,7 @@ function TasksPanel({ users, currentUser, tasks, templates, onAdd, onSetStatus, 
                       <option value="">Assign…</option>
                       {users.map(u=> <option key={u.id} value={u.id}>{u.full_name}</option>)}
                     </select>
-                    <button className="rounded-xl border px-2 py-1" onClick={()=>onDeleteTemplate(t.id)}>Delete</button>
+                    <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>onDeleteTemplate(t.id)}>Delete</button>
                   </div>
                 </li>
               ))}
@@ -2434,7 +2434,7 @@ function TasksPanel({ users, currentUser, tasks, templates, onAdd, onSetStatus, 
                   <option value="open">open</option>
                   <option value="done">done</option>
                 </select>
-                <button className="rounded-xl border px-2 py-1" onClick={()=>onDelete(t.id)}>Delete</button>
+                <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>onDelete(t.id)}>Delete</button>
               </div>
             </li>
           ))}
@@ -2464,7 +2464,7 @@ function MessagesPanel({ users, currentUser, messages, onSend }) {
           {thread.length===0 && <div className="text-sm text-gray-600">No messages yet.</div>}
           {thread.map(m => (
             <div key={m.id} className={`mb-2 flex ${m.from_user_id===currentUser.id ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[70%] rounded-xl border px-2 py-1 text-sm ${m.from_user_id===currentUser.id ? 'bg-black text-white' : ''}`}>
+              <div className={`max-w-[70%] rounded-xl border px-2 py-1 text-sm ${m.from_user_id===currentUser.id ? 'bg-brand text-white border-brand-dark' : 'bg-brand-lightest border-brand-light text-brand-text'}`}>
                 {m.body}
                 <div className="mt-1 text-[10px] opacity-70">{new Date(m.created_at).toLocaleString()}</div>
               </div>
@@ -2473,7 +2473,7 @@ function MessagesPanel({ users, currentUser, messages, onSend }) {
         </div>
         <div className="flex gap-2">
           <input className="flex-1 rounded-xl border px-3 py-2 text-sm" value={body} onChange={(e)=>setBody(e.target.value)} placeholder="Type a message" />
-          <button className="rounded-xl border px-3 py-2 text-sm" onClick={()=>{ onSend(currentUser.id, peerId, body); setBody(''); }}>Send</button>
+          <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={()=>{ onSend(currentUser.id, peerId, body); setBody(''); }}>Send</button>
         </div>
       </div>
     </div>
@@ -2498,8 +2498,8 @@ function RequestsPanel({ users, list, onSetStatus }) {
                 <div className="text-gray-600">{r.date_from} → {r.date_to}{r.notes ? ` • ${r.notes}` : ''}</div>
               </div>
               <div className="flex gap-2">
-                <button className="rounded-xl border px-2 py-1" onClick={()=>onSetStatus(r.id,'approved')}>Approve</button>
-                <button className="rounded-xl border px-2 py-1" onClick={()=>onSetStatus(r.id,'denied')}>Deny</button>
+                <button className="rounded-xl border border-brand-dark bg-brand-dark px-2 py-1 text-white transition hover:bg-brand-darker" onClick={()=>onSetStatus(r.id,'approved')}>Approve</button>
+                <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" onClick={()=>onSetStatus(r.id,'denied')}>Deny</button>
               </div>
             </li>
           ))}
