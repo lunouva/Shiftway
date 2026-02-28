@@ -3,9 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
   body {
     background-color: #EBF7FC;
     color: #0F3D52;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -19,9 +26,29 @@
     display: none !important;
   }
 
+  aside,
+  header,
+  nav,
+  button {
+    display: none !important;
+  }
+
   .print-schedule-area {
     border: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    background: white !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .print-schedule-area * {
+    overflow: visible !important;
   }
 }

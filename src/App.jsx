@@ -380,12 +380,12 @@ const apiFetch = async (path, { token, method = "GET", body, timeoutMs = 10000 }
 // ---------- small UI bits ----------
 function Section({ title, right, children }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-brand-text">{title}</h2>
+        <h2 className="text-xl font-bold text-brand-text">{title}</h2>
         <div>{right}</div>
       </div>
-      <div className="rounded-2xl border border-brand-light/70 bg-white p-4 shadow-sm">{children}</div>
+      <div className="rounded-[1.75rem] border border-brand-light bg-white p-6 shadow-sm">{children}</div>
     </div>
   );
 }
@@ -402,14 +402,14 @@ function Toolbar({ children }) {
 
 function TextInput({ label, value, onChange, type = "text", placeholder }) {
   return (
-    <label className="grid gap-1 text-sm text-brand-text">
-      <span className="text-brand-text/75">{label}</span>
+    <label className="grid gap-1.5 text-sm text-brand-text">
+      <span className="text-sm font-medium text-brand-text">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="rounded-xl border border-brand-light/80 bg-white px-3 py-2 text-sm"
+        className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
       />
     </label>
   );
@@ -417,18 +417,18 @@ function TextInput({ label, value, onChange, type = "text", placeholder }) {
 
 function TextArea({ label, value, onChange, placeholder }) {
   return (
-    <label className="grid gap-1 text-sm text-brand-text">
-      <span className="text-brand-text/75">{label}</span>
-      <textarea value={value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} className="min-h-[80px] rounded-xl border border-brand-light/80 bg-white px-3 py-2 text-sm" />
+    <label className="grid gap-1.5 text-sm text-brand-text">
+      <span className="text-sm font-medium text-brand-text">{label}</span>
+      <textarea value={value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} className="min-h-[80px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
     </label>
   );
 }
 
 function Select({ label, value, onChange, options }) {
   return (
-    <label className="grid gap-1 text-sm text-brand-text">
-      <span className="text-brand-text/75">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl border border-brand-light/80 bg-white px-3 py-2 text-sm">
+    <label className="grid gap-1.5 text-sm text-brand-text">
+      <span className="text-sm font-medium text-brand-text">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20">
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -441,8 +441,8 @@ function Select({ label, value, onChange, options }) {
 
 function Checkbox({ label, checked, onChange, hint }) {
   return (
-    <label className="flex items-start gap-2 text-sm text-brand-text">
-      <input type="checkbox" checked={checked} onChange={(e)=>onChange(e.target.checked)} className="mt-1"/>
+    <label className="flex items-start gap-3 rounded-2xl border border-brand-light bg-brand-lightest/60 p-3 text-sm text-brand-text">
+      <input type="checkbox" checked={checked} onChange={(e)=>onChange(e.target.checked)} className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-dark focus:ring-brand/30"/>
       <span>
         <span className="font-medium">{label}</span>
         {hint && <div className="text-xs text-brand-text/70">{hint}</div>}
@@ -453,7 +453,7 @@ function Checkbox({ label, checked, onChange, hint }) {
 
 function AvatarBadge({ name, className = "" }) {
   return (
-    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-light font-semibold text-brand-darker ${className}`}>
+    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-light font-semibold text-brand-darker shadow-sm ${className}`}>
       {getInitials(name)}
     </span>
   );
@@ -463,19 +463,41 @@ function Modal({ open, onClose, title, children, footer }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl border border-brand-light bg-brand-lightest p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button className="rounded-xl border border-brand-light bg-brand-lightest px-2 py-1 text-sm text-brand-dark transition hover:bg-brand-light" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-[1.75rem] border border-brand-light bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-brand-text">{title}</h3>
+          <button className="rounded-lg p-2 text-sm text-brand-dark transition hover:bg-brand-lightest" onClick={onClose}>
             Close
           </button>
         </div>
-        <div className="space-y-3">{children}</div>
+        <div className="space-y-4">{children}</div>
         <div className="mt-4 flex justify-end gap-2">{footer}</div>
       </div>
     </div>
   );
 }
+
+const MANAGER_NAV = [
+  { id: "schedule", label: "Schedule", icon: "📅" },
+  { id: "employees", label: "Employees", icon: "👥" },
+  { id: "pending", label: "Pending", icon: "⏳", badgeKey: "pending" },
+  { id: "tasks", label: "Tasks", icon: "📋", flag: "tasksEnabled" },
+  { id: "messages", label: "Messages", icon: "💬", flag: "messagesEnabled" },
+  { id: "feed", label: "Feed", icon: "📰", flag: "newsfeedEnabled" },
+  { id: "swaps", label: "Swaps", icon: "🔄", flag: "swapsEnabled" },
+  { id: "availability", label: "Unavailability", icon: "🔒", flag: "unavailabilityEnabled" },
+  { id: "settings", label: "Settings", icon: "⚙️" },
+  { id: "profile", label: "Profile", icon: "👤" },
+];
+
+const EMPLOYEE_NAV = [
+  { id: "my", label: "Schedule", icon: "📅" },
+  { id: "tasks", label: "Tasks", icon: "📋", flag: "tasksEnabled" },
+  { id: "messages", label: "Messages", icon: "💬", flag: "messagesEnabled" },
+  { id: "feed", label: "Feed", icon: "📰", flag: "newsfeedEnabled" },
+  { id: "swaps", label: "Swaps", icon: "🔄", flag: "swapsEnabled" },
+  { id: "profile", label: "Profile", icon: "👤" },
+];
 
 // ---------- auth ----------
 const AuthCtx = createContext(null);
@@ -630,104 +652,208 @@ function WeekGrid({
     }
   }
 
+  const todayKey = fmtDate(new Date());
+  const employeeShiftMap = Object.fromEntries(employees.map((emp) => [emp.id, {}]));
+  for (const shift of shifts || []) {
+    if (!shift.user_id || !employeeShiftMap[shift.user_id]) continue;
+    const key = fmtDate(shift.starts_at);
+    if (!employeeShiftMap[shift.user_id][key]) employeeShiftMap[shift.user_id][key] = [];
+    employeeShiftMap[shift.user_id][key].push(shift);
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[1000px]">
-        <div className="grid grid-cols-[220px_repeat(7,1fr)]">
-          <div className="sticky left-0 z-10 bg-brand-lightest p-2 font-semibold text-brand-text">Employee</div>
-          {weekDays.map((d) => (
-            <div key={String(d)} className="bg-brand-lightest p-2 text-center font-semibold text-brand-text">
-              <div>{fmtDateLabel(d)}</div>
-              {showLaborCost && (
-                <div className="mt-1 text-[11px] font-medium text-brand-darker">
-                  Labor {formatCurrency(laborCostByDay?.[fmtDate(d)] || 0)}
-                </div>
-              )}
-            </div>
-          ))}
-          <div className="sticky left-0 z-10 border-t border-brand-light bg-amber-50 p-2 font-semibold text-amber-900">Open shifts</div>
-          {weekDays.map((day) => (
-            <div key={`open-${fmtDate(day)}`} className="border-l border-t border-brand-light bg-amber-50/60 p-2 min-h-24">
-              <div className="space-y-2">
-                {(openShiftsByDay[fmtDate(day)] || []).length === 0 && (
-                  <div className="rounded-xl border border-dashed border-amber-300 px-2 py-2 text-xs text-amber-800">No open shifts</div>
-                )}
-                {(openShiftsByDay[fmtDate(day)] || []).map((s) => {
-                  const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
-                  const pendingClaim = pendingClaimByShiftId[s.id];
-                  const canClaim = currentUser?.role === "employee" && !pendingClaim;
-                  return (
-                    <div key={s.id} className={`rounded-lg border border-amber-200 border-l-4 ${tone.border} ${tone.bg} px-2 py-2 text-sm shadow-sm`}>
-                      <div className="font-medium text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
-                      <div className="text-xs text-brand-text/70">{positionsById[s.position_id]?.name || "Open role"}</div>
-                      {pendingClaim && (
-                        <div className="mt-1 text-[11px] font-medium text-amber-800">Claim pending approval</div>
-                      )}
-                      {canClaim && (
-                        <button className="mt-2 rounded-xl border border-brand-dark bg-brand-dark px-2 py-1 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onClaimOpen?.(s)}>
-                          Claim
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          {employees.map((emp) => (
-            <React.Fragment key={emp.id}>
-              <div className="sticky left-0 z-10 border-t border-brand-light bg-brand-lightest p-2 font-medium text-brand-text">
-                <div className="flex items-center gap-2">
-                  <AvatarBadge name={emp.full_name} className="h-7 w-7 text-xs" />
-                  <span>{emp.full_name}</span>
+    <div className="space-y-4">
+      <div className="grid gap-3 md:hidden">
+        {employees.map((emp) => (
+          <div key={`mobile-${emp.id}`} className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AvatarBadge name={emp.full_name} className="h-10 w-10 text-sm" />
+                <div>
+                  <div className="font-semibold text-brand-text">{emp.full_name}</div>
+                  <div className="text-xs text-brand-dark">{(Object.values(employeeShiftMap[emp.id] || {}).flat().length)} shifts this week</div>
                 </div>
               </div>
+              <div className="text-xs font-semibold text-brand-dark">{((Object.values(employeeShiftMap[emp.id] || {}).flat()).reduce((sum, shift) => sum + hoursBetween(shift.starts_at, shift.ends_at, shift.break_min), 0)).toFixed(2)} h</div>
+            </div>
+            <div className="space-y-3">
               {weekDays.map((day) => {
-                const dayShifts = shifts.filter((s) => s.user_id === emp.id && fmtDate(s.starts_at) === fmtDate(day));
-                const dayUnav = (byUserUnav[emp.id] || []).filter((ua) =>
-                  ua.kind === 'date' ? ua.date === fmtDate(day) : ua.weekday === day.getDay()
-                );
-                const dayTimeOff = (byUserTimeOff[emp.id] || []).filter((r)=> isDateWithin(fmtDate(day), r.date_from, r.date_to));
+                const dayKey = fmtDate(day);
+                const dayShifts = employeeShiftMap[emp.id]?.[dayKey] || [];
+                const dayUnav = (byUserUnav[emp.id] || []).filter((ua) => ua.kind === "date" ? ua.date === dayKey : ua.weekday === day.getDay());
+                const dayTimeOff = (byUserTimeOff[emp.id] || []).filter((r)=> isDateWithin(dayKey, r.date_from, r.date_to));
                 return (
-                  <div key={emp.id + fmtDate(day)} className="border-l border-t border-brand-light p-2 min-h-24">
+                  <div key={`${emp.id}-${dayKey}-mobile`} className="rounded-2xl bg-brand-lightest p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className={`rounded-xl px-3 py-1 text-sm font-bold ${dayKey === todayKey ? "bg-white text-brand-dark shadow-sm" : "text-brand-dark"}`}>{fmtDateLabel(day)}</div>
+                      <button className="rounded-lg p-2 text-brand-dark transition hover:bg-white" onClick={() => onCreate(emp.id, day)}>+</button>
+                    </div>
                     <div className="space-y-2">
                       {showTimeOffChips && dayTimeOff.map((r)=> (
-                        <div key={r.id} className={`rounded-xl border px-2 py-1 text-xs ${r.status==='approved' ? 'border-green-300 bg-green-50 text-green-700' : r.status==='pending' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-300 bg-gray-50 text-gray-700'}`}>
-                          Time off {r.date_from}→{r.date_to} ({r.status}){r.notes ? ` • ${r.notes}`: ''}
+                        <div key={r.id} className={`rounded-xl px-3 py-2 text-xs font-medium ${r.status === "approved" ? "bg-green-50 text-green-700" : r.status === "pending" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                          Time off {r.status}
                         </div>
                       ))}
                       {dayUnav.map((ua) => (
-                        <div key={ua.id} className="rounded-xl border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-700">
-                          Unavailable {ua.start_hhmm}–{ua.end_hhmm}{ua.notes ? ` • ${ua.notes}` : ''}
+                        <div key={ua.id} className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                          Unavailable {ua.start_hhmm}–{ua.end_hhmm}
                         </div>
                       ))}
-                      {dayShifts.map((s) => (
-                        <div key={s.id} className={`rounded-lg border border-brand-light border-l-4 ${(positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0]).border} ${(positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0]).bg} px-2 py-2 text-sm shadow-sm`}>
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <AvatarBadge name={emp.full_name} className="h-6 w-6 text-[10px]" />
-                              <div className="font-medium">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
+                      {dayShifts.map((s) => {
+                        const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
+                        return (
+                          <div key={s.id} className={`group rounded-xl border border-brand-light bg-white px-3 py-3 shadow-sm transition hover:scale-[1.02] hover:shadow-md ${tone.border}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <AvatarBadge name={emp.full_name} className="h-6 w-6 text-[10px]" />
+                                <div>
+                                  <div className="text-sm font-semibold text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
+                                  <div className="text-xs text-gray-500">{positionsById[s.position_id]?.name || "—"}</div>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 md:opacity-0 md:transition md:group-hover:opacity-100">
+                                {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Swap">🔄</button>}
+                                {onMarkOpen && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onMarkOpen(s.id)} title="Mark open">◌</button>}
+                                <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onDelete(s.id)} title="Delete">✕</button>
+                              </div>
                             </div>
-                            <button className="text-xs text-brand-dark underline" onClick={() => onDelete(s.id)}>delete</button>
                           </div>
-                          <div className="text-xs text-brand-text/70">{positionsById[s.position_id]?.name || "—"}</div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {onSwap && (
-                              <button className="text-xs text-brand-dark underline" onClick={() => onSwap(s)}>Swap</button>
-                            )}
-                            {onMarkOpen && (
-                              <button className="text-xs text-brand-dark underline" onClick={() => onMarkOpen(s.id)}>Open</button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      <button className="text-xs text-brand-dark underline" onClick={() => onCreate(emp.id, day)}>+ add</button>
+                        );
+                      })}
+                      {dayShifts.length === 0 && dayUnav.length === 0 && dayTimeOff.length === 0 && (
+                        <button className="flex min-h-12 w-full items-center justify-center rounded-xl border border-dashed border-brand/40 bg-white text-sm font-medium text-brand-dark transition hover:border-brand hover:bg-brand-lightest" onClick={() => onCreate(emp.id, day)}>
+                          + Add shift
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
               })}
-            </React.Fragment>
-          ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
+        <div className="min-w-[1380px] rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
+          <div className="grid grid-cols-[240px_repeat(7,minmax(160px,1fr))_88px]">
+            <div className="sticky left-0 z-20 rounded-tl-[1.5rem] bg-white px-4 py-4 text-sm font-bold text-brand-text">Team</div>
+            {weekDays.map((d, index) => {
+              const dayKey = fmtDate(d);
+              const isToday = dayKey === todayKey;
+              return (
+                <div key={String(d)} className={`px-3 py-4 text-center text-sm font-bold text-brand-dark ${index === weekDays.length - 1 ? "" : "border-r border-brand-light/60"}`}>
+                  <div className={`mx-auto inline-flex rounded-xl px-3 py-2 ${isToday ? "bg-brand-lightest" : ""}`}>{fmtDateLabel(d)}</div>
+                  {showLaborCost && (
+                    <div className="mt-1 text-[11px] font-medium text-brand-dark/75">
+                      {formatCurrency(laborCostByDay?.[dayKey] || 0)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div className="rounded-tr-[1.5rem] px-3 py-4 text-center text-xs font-bold uppercase tracking-wide text-brand-dark">Hours</div>
+
+            <div className="sticky left-0 z-20 border-t border-brand-light bg-brand-lightest px-4 py-3 text-sm font-semibold text-brand-dark">Open shifts</div>
+            {weekDays.map((day) => (
+              <div key={`open-${fmtDate(day)}`} className="border-l border-t border-brand-light/70 bg-brand-lightest/60 p-3">
+                <div className="space-y-2">
+                  {(openShiftsByDay[fmtDate(day)] || []).length === 0 && (
+                    <div className="rounded-xl border border-dashed border-brand/30 px-3 py-3 text-center text-xs font-medium text-brand-dark/70">Open</div>
+                  )}
+                  {(openShiftsByDay[fmtDate(day)] || []).map((s) => {
+                    const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
+                    const pendingClaim = pendingClaimByShiftId[s.id];
+                    const canClaim = currentUser?.role === "employee" && !pendingClaim;
+                    return (
+                      <div key={s.id} className={`rounded-xl border border-dashed border-brand/40 bg-white px-3 py-3 text-sm shadow-sm ${tone.border}`}>
+                        <div className="font-semibold text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
+                        <div className="text-xs text-gray-500">{positionsById[s.position_id]?.name || "Open role"}</div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-brand-dark">Open</span>
+                          {pendingClaim ? (
+                            <span className="text-[11px] font-semibold text-amber-700">Pending</span>
+                          ) : canClaim ? (
+                            <button className="rounded-xl bg-brand-dark px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-darker" onClick={() => onClaimOpen?.(s)}>Claim</button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="border-l border-t border-brand-light/70 bg-brand-lightest/60 px-3 py-3 text-center text-xs text-brand-dark">-</div>
+
+            {employees.map((emp, rowIndex) => {
+              const rowBg = rowIndex % 2 === 0 ? "bg-white" : "bg-brand-lightest/60";
+              const totalRowHours = Object.values(employeeShiftMap[emp.id] || {}).flat().reduce((sum, shift) => sum + hoursBetween(shift.starts_at, shift.ends_at, shift.break_min), 0);
+              return (
+                <React.Fragment key={emp.id}>
+                  <div className={`sticky left-0 z-10 border-t border-brand-light px-4 py-3 ${rowBg}`}>
+                    <div className="flex min-h-12 items-center gap-3">
+                      <AvatarBadge name={emp.full_name} className="h-9 w-9 text-xs" />
+                      <div>
+                        <div className="font-semibold text-brand-text">{emp.full_name}</div>
+                        <div className="text-xs text-brand-dark">{getInitials(emp.full_name)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {weekDays.map((day) => {
+                    const dayKey = fmtDate(day);
+                    const dayShifts = employeeShiftMap[emp.id]?.[dayKey] || [];
+                    const dayUnav = (byUserUnav[emp.id] || []).filter((ua) => ua.kind === "date" ? ua.date === dayKey : ua.weekday === day.getDay());
+                    const dayTimeOff = (byUserTimeOff[emp.id] || []).filter((r)=> isDateWithin(dayKey, r.date_from, r.date_to));
+                    return (
+                      <div key={emp.id + dayKey} className={`border-l border-t border-brand-light/70 p-2 ${rowBg}`}>
+                        <div className="flex min-h-12 flex-col gap-2">
+                          {showTimeOffChips && dayTimeOff.map((r)=> (
+                            <div key={r.id} className={`rounded-xl px-3 py-2 text-[11px] font-semibold ${r.status==='approved' ? 'bg-green-50 text-green-700' : r.status==='pending' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                              Time off
+                            </div>
+                          ))}
+                          {dayUnav.map((ua) => (
+                            <div key={ua.id} className="rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+                              Unavailable {ua.start_hhmm}–{ua.end_hhmm}
+                            </div>
+                          ))}
+                          {dayShifts.map((s) => {
+                            const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
+                            return (
+                              <div key={s.id} className={`group rounded-xl border border-brand-light bg-white px-3 py-3 shadow-sm transition duration-150 hover:scale-[1.02] hover:shadow-md ${tone.border}`}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <AvatarBadge name={emp.full_name} className="h-6 w-6 text-[10px] shrink-0" />
+                                    <div>
+                                      <div className="font-semibold text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
+                                      <div className="text-xs text-gray-500">{positionsById[s.position_id]?.name || "—"}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
+                                    {onSwap && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onSwap(s)} title="Swap">🔄</button>}
+                                    {onMarkOpen && <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onMarkOpen(s.id)} title="Mark open">◌</button>}
+                                    <button className="rounded-lg p-1.5 text-brand-dark hover:bg-brand-lightest" onClick={() => onDelete(s.id)} title="Delete">✕</button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {dayShifts.length === 0 && (
+                            <button className="flex min-h-12 items-center justify-center rounded-xl border border-dashed border-brand/30 text-sm font-medium text-brand-dark transition hover:border-brand hover:bg-white" onClick={() => onCreate(emp.id, day)}>
+                              +
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className={`border-l border-t border-brand-light/70 px-3 py-3 text-center text-xs font-semibold text-brand-dark ${rowBg}`}>
+                    {totalRowHours.toFixed(2)} h
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -1332,6 +1458,7 @@ function InnerApp(props) {
     addPost, addTask, setTaskStatus, deleteTask, addTemplate, deleteTemplate, sendMessage,
   } = props;
   const { currentUser, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (!currentUser) return <LoginPage backendMode={backendMode} onAfterLogin={(u) => setTab(u.role === "employee" ? "my" : "schedule")} />;
 
@@ -1365,6 +1492,8 @@ function InnerApp(props) {
     return totals;
   }, [data.users, schedule?.shifts, weekDays]);
   const totalLaborCost = Object.values(laborCostByDay).reduce((sum, amount) => sum + (Number(amount) || 0), 0);
+  const navItems = (isManager ? MANAGER_NAV : EMPLOYEE_NAV).filter((item) => !item.flag || flags[item.flag]);
+  const navBadgeCounts = { pending: pendingCount };
 
   const shiftWeek = (delta) => setWeekStart((s) => fmtDate(startOfWeek(addDays(s, delta * 7), flags.weekStartsOn)));
   const handlePrint = () => window.print();
@@ -1390,79 +1519,107 @@ function InnerApp(props) {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 text-brand-text">
-      <header className="print-hidden flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-gradient-to-r from-brand-darker via-brand-dark to-brand px-5 py-4 text-white shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="grid place-items-center rounded-2xl border border-white/20 bg-white/10 p-2 shadow-sm">
-            <div className="h-8 w-8 rounded-xl border border-white/20 bg-white/80" />
-          </div>
+    <div className="min-h-screen bg-brand-lightest text-brand-text">
+      <aside className="print-hidden fixed inset-y-0 left-0 z-40 hidden w-[220px] flex-col rounded-r-[2rem] bg-brand-darker px-4 py-5 text-white shadow-2xl md:flex">
+        <div className="mb-6 flex items-center gap-3 px-2">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15 text-lg">✦</div>
           <div>
-            <h1 className="text-2xl font-black">Shiftway</h1>
-            <div className="text-sm text-white/80">{isManager ? "Manager Console" : "My Schedule"}</div>
+            <div className="text-xl font-black">Shiftway</div>
+            <div className="text-xs text-white/70">{isManager ? "Warm scheduling" : "My workspace"}</div>
           </div>
         </div>
-        <Toolbar>
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm">
-            <span className="text-white/75">Location</span>
-            <select className="bg-transparent outline-none" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-              {data.locations.map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm">
-            <span className="text-white/75">Week</span>
-            <button className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-white transition hover:bg-white/20" title="Prev week" onClick={()=>shiftWeek(-1)}>◀</button>
-            <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="bg-transparent outline-none" />
-            <button className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-white transition hover:bg-white/20" title="Jump to current week" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
-            <button className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-white transition hover:bg-white/20" title="Next week" onClick={()=>shiftWeek(1)}>▶</button>
-          </div>
-          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm">
-            <AvatarBadge name={currentStateUser.full_name} className="h-7 w-7 bg-white/80 text-brand-darker" />
-            <span>{currentStateUser.full_name} <span className="text-white/70">({currentStateUser.role})</span></span>
-          </div>
-          <button className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20" onClick={logout}>Logout</button>
-        </Toolbar>
-      </header>
-
-      {backendMode && apiError && (
-        <div className="rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-900">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <div className="font-semibold">Backend unreachable</div>
-              <div className="text-xs text-red-900/80">{apiError}</div>
-              <div className="mt-1 text-xs text-red-900/80">Make sure the server is running and CORS allows this origin. If deployed, set <code>VITE_API_BASE</code>. Current API base: <code>{apiBase}</code>.</div>
+        <div className="flex-1 space-y-1">
+          {navItems.map((item) => (
+            <TabBtn key={item.id} id={item.id} tab={tab} setTab={setTab} label={item.label} icon={item.icon} badge={item.badgeKey ? navBadgeCounts[item.badgeKey] : null} vertical />
+          ))}
+          {isManager && <TabBtn id="requests" tab={tab} setTab={setTab} label="Time Off" icon="🗂" vertical />}
+        </div>
+        <div className="mt-4 rounded-[1.5rem] bg-white/10 p-3">
+          <div className="flex items-center gap-3">
+            <AvatarBadge name={currentStateUser.full_name} className="h-11 w-11 bg-white/85 text-brand-darker" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold">{currentStateUser.full_name}</div>
+              <div className="truncate text-xs text-white/70">{currentStateUser.role}</div>
             </div>
-            <button className="rounded-xl border border-red-300 bg-brand-lightest px-3 py-2 text-xs text-brand-text" onClick={()=>setApiError(null)}>Dismiss</button>
+          </div>
+          <button className="mt-3 w-full rounded-xl bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition hover:bg-brand-lightest" onClick={logout}>Logout</button>
+        </div>
+      </aside>
+
+      <div className="print-hidden sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-brand-light/70 bg-brand-lightest/95 px-4 py-4 backdrop-blur md:hidden">
+        <div className="flex items-center gap-3">
+          <button className="rounded-xl bg-white p-2 text-brand-dark shadow-sm" onClick={() => setMobileMenuOpen((v) => !v)}>☰</button>
+          <div>
+            <div className="font-black text-brand-text">Shiftway</div>
+            <div className="text-xs text-brand-dark">{navItems.find((item) => item.id === tab)?.label || "Schedule"}</div>
+          </div>
+        </div>
+        <AvatarBadge name={currentStateUser.full_name} className="h-10 w-10" />
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="print-hidden fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setMobileMenuOpen(false)}>
+          <div className="h-full w-[280px] rounded-r-[2rem] bg-brand-darker p-4 text-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <div className="text-xl font-black">Shiftway</div>
+                <div className="text-xs text-white/70">{currentStateUser.full_name}</div>
+              </div>
+              <button className="rounded-xl p-2 hover:bg-white/10" onClick={() => setMobileMenuOpen(false)}>✕</button>
+            </div>
+            <div className="space-y-1">
+              {navItems.map((item) => (
+                <TabBtn key={`mobile-${item.id}`} id={item.id} tab={tab} setTab={(next) => { setTab(next); setMobileMenuOpen(false); }} label={item.label} icon={item.icon} badge={item.badgeKey ? navBadgeCounts[item.badgeKey] : null} vertical />
+              ))}
+              {isManager && <TabBtn id="requests" tab={tab} setTab={(next) => { setTab(next); setMobileMenuOpen(false); }} label="Time Off" icon="🗂" vertical />}
+            </div>
+            <button className="mt-4 w-full rounded-xl bg-white px-4 py-2 font-semibold text-brand-dark" onClick={logout}>Logout</button>
           </div>
         </div>
       )}
 
-      <nav className="print-hidden rounded-3xl bg-brand-darker p-3 shadow-sm">
-        <div className="flex flex-wrap gap-2">
-        {isManager && (<>
-          <TabBtn id="schedule" tab={tab} setTab={setTab} label="Schedule" />
-          <TabBtn id="employees" tab={tab} setTab={setTab} label="Employees" />
-          <TabBtn id="pending" tab={tab} setTab={setTab} label={`Pending${pendingCount ? ` (${pendingCount})` : ""}`} />
-          <TabBtn id="profile" tab={tab} setTab={setTab} label="Profile" />
-          {flags.unavailabilityEnabled && <TabBtn id="availability" tab={tab} setTab={setTab} label="Unavailability" />}
-          {flags.newsfeedEnabled && <TabBtn id="feed" tab={tab} setTab={setTab} label="Feed" />}
-          {flags.tasksEnabled && <TabBtn id="tasks" tab={tab} setTab={setTab} label="Tasks" />}
-          {flags.messagesEnabled && <TabBtn id="messages" tab={tab} setTab={setTab} label="Messages" />}
-          <TabBtn id="requests" tab={tab} setTab={setTab} label="Requests" />
-          {flags.swapsEnabled && <TabBtn id="swaps" tab={tab} setTab={setTab} label="Swaps" />}
-          <TabBtn id="settings" tab={tab} setTab={setTab} label="Settings" />
-        </>)}
-        {!isManager && (<>
-          <TabBtn id="my" tab={tab} setTab={setTab} label="My Schedule" />
-          <TabBtn id="profile" tab={tab} setTab={setTab} label="Profile" />
-          {flags.newsfeedEnabled && <TabBtn id="feed" tab={tab} setTab={setTab} label="Feed" />}
-          {flags.tasksEnabled && <TabBtn id="tasks" tab={tab} setTab={setTab} label="Tasks" />}
-          {flags.messagesEnabled && <TabBtn id="messages" tab={tab} setTab={setTab} label="Messages" />}
-          {flags.swapsEnabled && <TabBtn id="swaps" tab={tab} setTab={setTab} label="Swaps" />}
-        </>)}
-        </div>
-      </nav>
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-4 pb-24 md:ml-[220px] md:px-6 md:py-6 md:pb-6">
+        <header className="print-hidden rounded-[1.75rem] border border-brand-light bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-dark/70">{isManager ? "Schedule Hub" : "Personal Schedule"}</div>
+              <h1 className="text-3xl font-black text-brand-text">{isManager ? "Build the week with confidence" : "Your week at a glance"}</h1>
+              <div className="mt-1 text-sm text-brand-dark">Friendly scheduling for {data.locations.find((entry) => entry.id === locationId)?.name || "your team"}.</div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-sm font-medium text-brand-text">Location</span>
+                <select className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+                  {data.locations.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-sm font-medium text-brand-text">Week</span>
+                <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              </label>
+              <div className="flex items-end gap-2">
+                <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>shiftWeek(-1)}>Prev</button>
+                <button className="rounded-xl bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-darker" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
+                <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>shiftWeek(1)}>Next</button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {backendMode && apiError && (
+          <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-semibold">Backend unreachable</div>
+                <div className="text-xs text-red-900/80">{apiError}</div>
+                <div className="mt-1 text-xs text-red-900/80">Make sure the server is running and CORS allows this origin. If deployed, set <code>VITE_API_BASE</code>. Current API base: <code>{apiBase}</code>.</div>
+              </div>
+              <button className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100" onClick={()=>setApiError(null)}>Dismiss</button>
+            </div>
+          </div>
+        )}
 
       {isManager && tab === "schedule" && (
         <Section
@@ -1579,21 +1736,34 @@ function InnerApp(props) {
           title="Employees"
           right={<button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => setInviteModal(true)}>Invite Employee</button>}
         >
-          <div className="grid gap-4 md:grid-cols-[1fr,2fr]">
+          <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
             <AddEmployeeForm onAdd={addEmployee} />
             <div>
-              <h4 className="mb-2 font-semibold">Active employees</h4>
-              <ul className="divide-y rounded-2xl border">
-                {users.map((u) => (
-                  <li key={u.id} className="grid gap-2 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                    <div>
-                      <div className="flex items-center gap-2 font-medium"><AvatarBadge name={u.full_name} className="h-7 w-7 text-xs" />{u.full_name} {u.pronouns ? <span className="text-xs text-gray-500">({u.pronouns})</span> : null}</div>
-                      <div className="text-xs text-gray-600">{u.email}{u.phone ? ` • ${u.phone}` : ''}{u.birthday ? ` • Birthday: ${u.birthday}` : ''}</div>
-                      {u.emergency_contact?.name && (
-                        <div className="text-xs text-gray-600">Emergency: {u.emergency_contact.name} {u.emergency_contact.phone ? `(${u.emergency_contact.phone})` : ''}</div>
-                      )}
-                      <div className="mt-2 flex max-w-[220px] items-center gap-2">
-                        <label className="text-xs text-gray-600">Wage</label>
+              <h4 className="mb-4 text-lg font-bold text-brand-text">Active employees</h4>
+              {users.length === 0 ? (
+                <EmptyState icon="👥" heading="No employees yet" message="Invite someone or add a team member to start building your crew." />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                  {users.map((u) => (
+                    <div key={u.id} className="rounded-2xl border border-brand-light bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <AvatarBadge name={u.full_name} className="h-12 w-12 text-sm" />
+                          <div>
+                            <div className="font-semibold text-brand-text">{u.full_name}</div>
+                            <div className="text-xs text-gray-500">{u.email || "No email added"}</div>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-brand-lightest px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-dark">{u.role}</span>
+                      </div>
+                      <div className="mt-3 space-y-2 text-sm text-gray-600">
+                        {u.pronouns ? <div>{u.pronouns}</div> : null}
+                        <div>{u.phone || "No phone"}{u.birthday ? ` • Birthday ${u.birthday}` : ""}</div>
+                        {u.emergency_contact?.name ? <div>Emergency: {u.emergency_contact.name}{u.emergency_contact.phone ? ` (${u.emergency_contact.phone})` : ""}</div> : null}
+                        <div className="font-medium text-brand-dark">Hours this week: {(totalHoursByUser[u.id] || 0).toFixed(2)} h</div>
+                      </div>
+                      <div className="mt-3">
+                        <label className="mb-1 block text-sm font-medium text-brand-text">Hourly wage</label>
                         <input
                           type="number"
                           min="0"
@@ -1603,19 +1773,20 @@ function InnerApp(props) {
                             ...d,
                             users: d.users.map((user) => user.id === u.id ? { ...user, wage: e.target.value === "" ? "" : Number(e.target.value) } : user),
                           }))}
-                          className="w-full rounded-xl border border-brand-light px-2 py-1 text-sm"
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                         />
                       </div>
-                      {u.notes && <div className="text-xs text-gray-600">Notes: {u.notes}</div>}
-                      {(u.attachments||[]).length>0 && (
-                        <div className="mt-1 text-xs text-gray-600">Attachments: {(u.attachments||[]).map(f=> f.name).join(', ')}</div>
-                      )}
+                      <div className="mt-3 flex gap-2">
+                        <button className="rounded-lg p-2 text-brand-dark transition hover:bg-brand-lightest" onClick={() => setTab("messages")}>💬</button>
+                        <button className="rounded-lg p-2 text-brand-dark transition hover:bg-brand-lightest" onClick={() => setTab("profile")}>👤</button>
+                        <button className="rounded-lg p-2 text-brand-dark transition hover:bg-brand-lightest" onClick={() => setTab("schedule")}>📅</button>
+                      </div>
+                      {u.notes && <div className="mt-3 text-xs text-gray-500">Notes: {u.notes}</div>}
+                      {(u.attachments||[]).length>0 && <div className="mt-2 text-xs text-gray-500">Attachments: {(u.attachments||[]).map(f=> f.name).join(', ')}</div>}
                     </div>
-                    <Pill>{u.role}</Pill>
-                  </li>
-                ))}
-                {users.length === 0 && <li className="p-3 text-sm text-gray-600">No employees yet.</li>}
-              </ul>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </Section>
@@ -1859,31 +2030,62 @@ function InnerApp(props) {
         clientSettings={clientSettings}
       />
 
-      <footer className="py-8 text-center text-xs text-gray-500">Shiftway scheduling app.</footer>
+        <footer className="pb-4 text-center text-xs text-brand-dark/60">Shiftway scheduling app.</footer>
+      </main>
+
+      <nav className="print-hidden fixed inset-x-0 bottom-0 z-30 border-t border-brand-light/80 bg-white/95 px-2 py-2 backdrop-blur md:hidden">
+        <div className="grid grid-cols-5 gap-2">
+          {navItems.slice(0, 5).map((item) => (
+            <button
+              key={`bottom-${item.id}`}
+              onClick={() => setTab(item.id)}
+              className={`rounded-2xl px-2 py-2 text-center text-[11px] font-semibold transition ${tab === item.id ? "bg-brand-lightest text-brand-dark" : "text-brand-dark/70"}`}
+            >
+              <div className="text-base">{item.icon}</div>
+              <div>{item.label}</div>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
 
-function TabBtn({ id, tab, setTab, label }) {
+function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
   return (
-    <button onClick={() => setTab(id)} className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${tab === id ? "bg-white text-brand-darker shadow-sm" : "bg-white/10 text-white hover:bg-white/20"}`}>{label}</button>
+    <button
+      onClick={() => setTab(id)}
+      className={`w-full transition ${vertical ? `flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm font-medium ${tab === id ? "bg-white/20 text-white" : "text-white/85 hover:bg-white/10"}` : `rounded-2xl px-4 py-2 text-sm font-medium ${tab === id ? "bg-white text-brand-darker shadow-sm" : "bg-white/10 text-white hover:bg-white/20"}`}`}
+    >
+      <span className="flex items-center gap-3">
+        {icon ? <span className="text-base">{icon}</span> : null}
+        <span>{label}</span>
+      </span>
+      {badge ? <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-brand-darker">{badge}</span> : null}
+    </button>
   );
 }
 
 function SummaryStat({ label, value }) {
   return (
-    <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+    <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
       <div className="text-xs font-medium uppercase tracking-wide text-brand-text/60">{label}</div>
       <div className="mt-1 text-lg font-semibold text-brand-text">{value}</div>
     </div>
   );
 }
 
-function EmptyState({ icon, message }) {
+function EmptyState({ icon, message, heading, actionLabel, onAction }) {
   return (
-    <div className="grid place-items-center gap-2 rounded-2xl border border-dashed border-brand-light bg-brand-lightest p-6 text-center text-sm text-brand-text/75">
-      <div className="text-2xl">{icon}</div>
-      <div>{message}</div>
+    <div className="grid place-items-center gap-3 rounded-[1.75rem] border border-dashed border-brand-light bg-brand-lightest p-8 text-center">
+      <div className="text-[64px] leading-none">{icon}</div>
+      <div className="text-lg font-bold text-brand-text">{heading || "Nothing here yet"}</div>
+      <div className="max-w-md text-sm text-gray-500">{message}</div>
+      {actionLabel && onAction && (
+        <button className="rounded-xl bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-darker" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -2020,28 +2222,28 @@ function AddEmployeeForm({ onAdd }) {
   };
 
   return (
-    <div className="rounded-2xl border p-3">
-      <h4 className="mb-2 font-semibold">Add employee</h4>
+    <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+      <h4 className="mb-4 text-lg font-bold text-brand-text">Add employee</h4>
       <div className="grid gap-3 md:grid-cols-2">
         <TextInput label="Full name" value={full_name} onChange={setName} placeholder="Jane Doe" />
         <TextInput label="Email" value={email} onChange={setEmail} placeholder="jane@example.com" />
         <Select label="Role" value={role} onChange={setRole} options={[{ value: "employee", label: "Employee" }, { value: "manager", label: "Manager" }, { value: "owner", label: "Owner" }]} />
         <TextInput label="Phone" value={phone} onChange={setPhone} placeholder="555-0123" />
-        <label className="grid gap-1 text-sm">
-          <span className="text-gray-600">Birthday</span>
-          <input type="date" value={birthday} onChange={(e)=>setBirthday(e.target.value)} className="rounded-xl border px-3 py-2"/>
+        <label className="grid gap-1.5 text-sm">
+          <span className="text-sm font-medium text-brand-text">Birthday</span>
+          <input type="date" value={birthday} onChange={(e)=>setBirthday(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"/>
         </label>
         <TextInput label="Pronouns (optional)" value={pronouns} onChange={setPronouns} placeholder="she/her" />
         <TextInput label="Emergency contact name" value={emName} onChange={setEmName} placeholder="Contact name" />
         <TextInput label="Emergency contact phone" value={emPhone} onChange={setEmPhone} placeholder="555-0456" />
-        <label className="grid gap-1 text-sm">
-          <span className="text-gray-600">Hourly wage</span>
-          <input type="number" min="0" step="0.01" value={wage} onChange={(e)=>setWage(e.target.value)} className="rounded-xl border px-3 py-2"/>
+        <label className="grid gap-1.5 text-sm">
+          <span className="text-sm font-medium text-brand-text">Hourly wage</span>
+          <input type="number" min="0" step="0.01" value={wage} onChange={(e)=>setWage(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"/>
         </label>
-        <label className="md:col-span-2 grid gap-1 text-sm">
-          <span className="text-gray-600">Attachments {DEMO_MODE ? "(stored as metadata only in demo)" : "(metadata only for now)"}</span>
-          <input type="file" multiple onChange={(e)=>onFiles(e.target.files)} className="rounded-xl border px-3 py-2" />
-          {filesMeta.length>0 && <div className="text-xs text-gray-600">{filesMeta.length} file(s): {filesMeta.map(f=>f.name).join(', ')}</div>}
+        <label className="md:col-span-2 grid gap-1.5 text-sm">
+          <span className="text-sm font-medium text-brand-text">Attachments {DEMO_MODE ? "(stored as metadata only in demo)" : "(metadata only for now)"}</span>
+          <input type="file" multiple onChange={(e)=>onFiles(e.target.files)} className="rounded-xl border border-gray-200 px-3 py-2" />
+          {filesMeta.length>0 && <div className="text-xs text-gray-500">{filesMeta.length} file(s): {filesMeta.map(f=>f.name).join(', ')}</div>}
         </label>
         <div className="md:col-span-2">
           <TextArea label="Notes" value={notes} onChange={setNotes} placeholder="Allergies, preferred shifts, etc." />
@@ -2057,8 +2259,8 @@ function AddEmployeeForm({ onAdd }) {
 function AddPositionForm({ onAdd }) {
   const [name, setName] = useState("");
   return (
-    <div className="rounded-2xl border p-3">
-      <h4 className="mb-2 font-semibold">Add role/position</h4>
+    <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+      <h4 className="mb-4 text-lg font-bold text-brand-text">Add role/position</h4>
       <div className="grid gap-4 md:grid-cols-2">
         <TextInput label="Name" value={name} onChange={setName} placeholder="Scooper" />
       </div>
@@ -2512,15 +2714,21 @@ function PendingApprovalsPanel({ users, schedules, swaps, timeOffRequests, openS
   const pendingSwaps = (swaps || []).filter((swap) => swap.status === "pending_manager");
   const pendingTimeOff = (timeOffRequests || []).filter((request) => request.status === "pending");
   const pendingClaims = (openShiftClaims || []).filter((claim) => claim.status === "pending");
+  const StatusBadge = ({ children, tone = "warn" }) => (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone === "success" ? "bg-green-100 text-green-700" : tone === "danger" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{children}</span>
+  );
 
   if (!pendingSwaps.length && !pendingTimeOff.length && !pendingClaims.length) {
-    return <EmptyState icon="✅" message="Nothing is waiting on approval right now." />;
+    return <EmptyState icon="✅" heading="All caught up" message="Nothing is waiting on approval right now." />;
   }
 
   return (
     <div className="space-y-6 text-sm">
-      <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
-        <div className="mb-2 font-semibold">Shift swaps</div>
+      <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="font-semibold text-brand-text">Shift Swaps</div>
+          <StatusBadge>{pendingSwaps.length} pending</StatusBadge>
+        </div>
         <ul className="divide-y">
           {pendingSwaps.length === 0 && <li className="py-2 text-brand-text/70">No swap requests pending.</li>}
           {pendingSwaps.map((swap) => (
@@ -2535,16 +2743,19 @@ function PendingApprovalsPanel({ users, schedules, swaps, timeOffRequests, openS
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onSetSwapStatus(swap.id, "approved")}>Approve</button>
-                <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSetSwapStatus(swap.id, "denied")}>Deny</button>
+                <button className="rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-green-600" onClick={() => onSetSwapStatus(swap.id, "approved")}>Approve</button>
+                <button className="rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-600" onClick={() => onSetSwapStatus(swap.id, "denied")}>Deny</button>
               </div>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
-        <div className="mb-2 font-semibold">Time-off requests</div>
+      <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="font-semibold text-brand-text">Time Off Requests</div>
+          <StatusBadge>{pendingTimeOff.length} pending</StatusBadge>
+        </div>
         <ul className="divide-y">
           {pendingTimeOff.length === 0 && <li className="py-2 text-brand-text/70">No time-off requests pending.</li>}
           {pendingTimeOff.map((request) => (
@@ -2557,16 +2768,19 @@ function PendingApprovalsPanel({ users, schedules, swaps, timeOffRequests, openS
                 <div className="text-xs text-brand-text/70">{request.date_from} → {request.date_to}{request.notes ? ` • ${request.notes}` : ""}</div>
               </div>
               <div className="flex gap-2">
-                <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onSetTimeOffStatus(request.id, "approved")}>Approve</button>
-                <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSetTimeOffStatus(request.id, "denied")}>Deny</button>
+                <button className="rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-green-600" onClick={() => onSetTimeOffStatus(request.id, "approved")}>Approve</button>
+                <button className="rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-600" onClick={() => onSetTimeOffStatus(request.id, "denied")}>Deny</button>
               </div>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
-        <div className="mb-2 font-semibold">Open shift claims</div>
+      <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="font-semibold text-brand-text">Open Shift Claims</div>
+          <StatusBadge>{pendingClaims.length} pending</StatusBadge>
+        </div>
         <ul className="divide-y">
           {pendingClaims.length === 0 && <li className="py-2 text-brand-text/70">No open shift claims pending.</li>}
           {pendingClaims.map((claim) => {
@@ -2583,8 +2797,8 @@ function PendingApprovalsPanel({ users, schedules, swaps, timeOffRequests, openS
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onSetOpenShiftClaimStatus(claim.id, "approved")}>Approve</button>
-                  <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSetOpenShiftClaimStatus(claim.id, "denied")}>Deny</button>
+                  <button className="rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-green-600" onClick={() => onSetOpenShiftClaimStatus(claim.id, "approved")}>Approve</button>
+                  <button className="rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-600" onClick={() => onSetOpenShiftClaimStatus(claim.id, "denied")}>Deny</button>
                 </div>
               </li>
             );
@@ -2706,13 +2920,13 @@ function OpenShiftList({ shifts, positionsById, positionColors, claims, onClaim 
   if (!shifts.length) return null;
   const pendingShiftIds = new Set((claims || []).filter((claim) => claim.status === "pending").map((claim) => claim.shift_id));
   return (
-    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
-      <div className="mb-2 font-semibold">Open shifts</div>
+    <div className="mt-4 rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">
+      <div className="mb-3 text-lg font-bold text-brand-text">Open shifts</div>
       <ul className="space-y-2">
         {shifts.map((shift) => {
           const tone = positionColors?.[shift.position_id] || POSITION_COLOR_PALETTE[0];
           return (
-            <li key={shift.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-light border-l-4 ${tone.border} ${tone.bg} px-3 py-2 text-sm`}>
+            <li key={shift.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-brand/30 bg-white px-3 py-3 text-sm shadow-sm ${tone.border}`}>
               <div>
                 <div className="font-medium">{fmtDateLabel(shift.starts_at)} • {fmtTime(shift.starts_at)} - {fmtTime(shift.ends_at)}</div>
                 <div className="text-xs text-brand-text/70">{positionsById[shift.position_id]?.name || "Open role"}</div>
@@ -2736,15 +2950,15 @@ function MyShifts({ currentUser, schedule, weekDays, positionsById, locationName
   const myShifts = (schedule?.shifts || []).filter((s) => s.user_id === currentUser.id);
   const ordered = [...myShifts].sort((a, b) => safeDate(a.starts_at) - safeDate(b.starts_at));
   return (
-    <div className="rounded-2xl border border-brand-light bg-white shadow-sm">
+    <div className="rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
       {ordered.length === 0 ? (
-        <EmptyState icon="📭" message="No shifts scheduled for you this week." />
+        <EmptyState icon="📭" heading="No shifts yet" message="No shifts scheduled for you this week." />
       ) : (
         <ul className="divide-y divide-brand-light">
           {ordered.map((shift) => {
             const tone = positionColors?.[shift.position_id] || POSITION_COLOR_PALETTE[0];
             return (
-              <li key={shift.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-4 ${tone.border} ${tone.bg} px-4 py-3 text-sm`}>
+              <li key={shift.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-4 bg-white px-4 py-4 text-sm ${tone.border}`}>
                 <div className="flex items-center gap-3">
                   <AvatarBadge name={currentUser.full_name} className="h-8 w-8 text-xs" />
                   <div>
