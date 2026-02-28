@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import crypto from "node:crypto";
 import session from "express-session";
 import passport from "passport";
@@ -53,6 +55,7 @@ const APP_ALLOWED_ORIGINS = new Set(
     .map(normalizeOrigin)
     .filter(Boolean)
 );
+const allowedWebOrigins = Array.from(APP_ALLOWED_ORIGINS.values());
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session";
@@ -77,6 +80,21 @@ for (const method of ["get", "post", "put", "patch", "delete"]) {
   app[method] = (path, ...handlers) => original(path, ...handlers.map(wrapAsync));
 }
 
+const normalizeEmailInput = (value) => String(value || "").trim().toLowerCase();
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
+const rateLimitHandler = (req, res) => res.status(429).json({ error: "too_many_requests" });
+const buildRateLimiter = (windowMs, max) => rateLimit({
+  windowMs,
+  max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
+const authRateLimiter = buildRateLimiter(15 * 60 * 1000, 10);
+const inviteRateLimiter = buildRateLimiter(60 * 60 * 1000, 20);
+const generalApiRateLimiter = buildRateLimiter(60 * 1000, 200);
+
 app.use(cors({
   origin: isProd
     ? (origin, cb) => {
@@ -90,6 +108,21 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: "2mb" }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      connectSrc: ["'self'", ...allowedWebOrigins],
+      formAction: ["'self'", ...allowedWebOrigins],
+      frameAncestors: ["'self'", ...allowedWebOrigins],
+      imgSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+    },
+  },
+}));
 
 app.use((req, res, next) => {
   const incoming = String(req.headers["x-request-id"] || "").trim();
@@ -104,6 +137,9 @@ if (isProd) {
   // Allow override for multi-hop proxy setups (e.g., Cloudflare -> Render).
   app.set("trust proxy", Number(process.env.TRUST_PROXY || 1));
 }
+
+app.use("/api", generalApiRateLimiter);
+app.use("/api/invite", inviteRateLimiter);
 
 app.use(session({
   secret: SESSION_SECRET,
@@ -128,7 +164,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     callbackURL: process.env.GOOGLE_CALLBACK_URL || `${APP_URL}/api/auth/google/callback`,
   }, async (accessToken, refreshToken, profile, done) => {
     try {
-      const email = profile.emails?.[0]?.value;
+      const email = normalizeEmailInput(profile.emails?.[0]?.value);
       if (!email) return done(new Error("No email from Google"));
       const existing = await query("SELECT * FROM users WHERE email = $1", [email]);
       if (existing.rows[0]) return done(null, existing.rows[0]);
@@ -165,6 +201,13 @@ const auth = async (req, res, next) => {
     }
     res.status(401).json({ error: "invalid_token" });
   }
+};
+
+const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  next();
 };
 
 const defaultFlags = () => ({
@@ -304,6 +347,22 @@ const getInviteByToken = async (token, { includeOrgName = false } = {}) => {
   return invite;
 };
 
+const runTokenCleanup = async () => {
+  try {
+    await query("DELETE FROM magic_links WHERE expires_at < now() OR used_at IS NOT NULL");
+    await query(
+      "DELETE FROM invites WHERE (expires_at < now() OR accepted_at IS NOT NULL) AND created_at < now() - interval '7 days'"
+    );
+  } catch (err) {
+    console.error("[shiftway-server] Token cleanup failed", err);
+  }
+};
+
+void runTokenCleanup();
+setInterval(() => {
+  void runTokenCleanup();
+}, 24 * 60 * 60 * 1000);
+
 app.get("/api/health", async (req, res) => {
   const diagnostics = { env: process.env.NODE_ENV || "development", timestamp: new Date().toISOString() };
   try {
@@ -316,17 +375,19 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", authRateLimiter, async (req, res) => {
   const { company_name, full_name, email, password } = req.body || {};
-  if (!full_name || !email || !password) return res.status(400).json({ error: "missing_fields" });
-  const existing = await query("SELECT id FROM users WHERE email = $1", [email]);
+  const trimmedName = String(full_name || "").trim();
+  const normalizedEmail = normalizeEmailInput(email);
+  if (!trimmedName || !normalizedEmail || !password) return res.status(400).json({ error: "missing_fields" });
+  const existing = await query("SELECT id FROM users WHERE email = $1", [normalizedEmail]);
   if (existing.rows[0]) return res.status(400).json({ error: "email_in_use" });
   const org = await query("INSERT INTO orgs (name) VALUES ($1) RETURNING *", [company_name || "New Company"]);
   const location = await query("INSERT INTO locations (org_id, name) VALUES ($1, $2) RETURNING *", [org.rows[0].id, "Main Location"]);
   const hash = await bcrypt.hash(password, 10);
   const userRes = await query(
     "INSERT INTO users (org_id, location_id, full_name, email, password_hash, role, is_active) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING *",
-    [org.rows[0].id, location.rows[0].id, full_name, email.toLowerCase(), hash, "owner"]
+    [org.rows[0].id, location.rows[0].id, trimmedName, normalizedEmail, hash, "owner"]
   );
   const user = userRes.rows[0];
   const data = await ensureOrgState(org.rows[0].id, location.rows[0].id, user);
@@ -334,10 +395,11 @@ app.post("/api/auth/register", async (req, res) => {
   res.json({ token, user: sanitizeUser(user), data });
 });
 
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", authRateLimiter, async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "missing_fields" });
-  const userRes = await query("SELECT * FROM users WHERE email = $1", [email.toLowerCase()]);
+  const normalizedEmail = normalizeEmailInput(email);
+  if (!normalizedEmail || !password) return res.status(400).json({ error: "missing_fields" });
+  const userRes = await query("SELECT * FROM users WHERE email = $1", [normalizedEmail]);
   const user = userRes.rows[0];
   if (!user || !user.password_hash) return res.status(400).json({ error: "invalid_credentials" });
   const ok = await bcrypt.compare(password, user.password_hash);
@@ -346,17 +408,18 @@ app.post("/api/auth/login", async (req, res) => {
   res.json({ token, user: sanitizeUser(user) });
 });
 
-app.post("/api/auth/magic/request", async (req, res) => {
+app.post("/api/auth/magic/request", authRateLimiter, async (req, res) => {
   const { email, redirect_url } = req.body || {};
-  if (!email) return res.status(400).json({ error: "missing_email" });
-  const userRes = await query("SELECT * FROM users WHERE email = $1", [email.toLowerCase()]);
+  const normalizedEmail = normalizeEmailInput(email);
+  if (!normalizedEmail) return res.status(400).json({ error: "missing_email" });
+  const userRes = await query("SELECT * FROM users WHERE email = $1", [normalizedEmail]);
   const user = userRes.rows[0];
   if (!user) return res.json({ ok: true });
   const token = crypto.randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + 15 * 60 * 1000);
   await query("INSERT INTO magic_links (user_id, token, expires_at) VALUES ($1,$2,$3)", [user.id, token, expires]);
   const url = `${APP_URL}/api/auth/magic/verify?token=${token}&redirect=${encodeURIComponent(redirect_url || APP_URL)}`;
-  await sendEmail({ to: email, subject: "Your Shiftway login link", text: `Click to sign in: ${url}` });
+  await sendEmail({ to: normalizedEmail, subject: "Your Shiftway login link", text: `Click to sign in: ${url}` });
   res.json({ ok: true });
 });
 
@@ -410,44 +473,35 @@ app.get("/api/me", auth, async (req, res) => {
 });
 
 app.patch("/api/me", auth, async (req, res) => {
-  const {
-    full_name,
-    phone,
-    pronouns,
-    birthday,
-    emergency_contact,
-    email,
-    current_password,
-    new_password,
-    wage,
-  } = req.body || {};
+  const payload = req.body || {};
+  const hasFullName = hasOwn(payload, "full_name");
+  const hasPhone = hasOwn(payload, "phone");
+  const hasPronouns = hasOwn(payload, "pronouns");
+  const hasBirthday = hasOwn(payload, "birthday");
+  const hasEmergencyContact = hasOwn(payload, "emergency_contact");
+  const hasEmail = hasOwn(payload, "email");
+  const hasWage = hasOwn(payload, "wage");
+  const trimmedName = hasFullName ? String(payload.full_name || "").trim() : String(req.user.full_name || "").trim();
+  const normalizedEmail = hasEmail ? normalizeEmailInput(payload.email) : String(req.user.email || "").trim().toLowerCase();
+  const wantsPasswordChange = String(payload.new_password || "").trim().length > 0;
 
-  const trimmedName = String(full_name || "").trim();
-  const normalizedEmail = String(email || req.user.email || "").trim().toLowerCase();
-  const nextPhone = String(phone || "").trim();
-  const nextPronouns = String(pronouns || "").trim();
-  const nextBirthday = String(birthday || "").trim();
-  const nextEmergency = {
-    name: String(emergency_contact?.name || "").trim(),
-    phone: String(emergency_contact?.phone || "").trim(),
-  };
-  const nextWage = wage === "" || wage == null ? "" : Number(wage);
-  const wantsCredentialChange = normalizedEmail !== String(req.user.email || "").toLowerCase() || String(new_password || "").length > 0;
+  if (hasFullName && !trimmedName) return res.status(400).json({ error: "missing_fields" });
+  if (hasEmail && !normalizedEmail) return res.status(400).json({ error: "missing_fields" });
 
-  if (!trimmedName) return res.status(400).json({ error: "missing_fields" });
-  if (wantsCredentialChange && !current_password) return res.status(400).json({ error: "missing_fields" });
-
-  if (wantsCredentialChange) {
-    const ok = req.user.password_hash ? await bcrypt.compare(String(current_password), req.user.password_hash) : false;
-    if (!ok) return res.status(400).json({ error: "invalid_password" });
-    if (normalizedEmail !== String(req.user.email || "").toLowerCase()) {
-      const existing = await query("SELECT id FROM users WHERE email = $1 AND id <> $2", [normalizedEmail, req.user.id]);
-      if (existing.rows[0]) return res.status(400).json({ error: "email_in_use" });
-    }
+  if (hasEmail && normalizedEmail !== String(req.user.email || "").trim().toLowerCase()) {
+    const existing = await query("SELECT id FROM users WHERE email = $1 AND id <> $2", [normalizedEmail, req.user.id]);
+    if (existing.rows[0]) return res.status(400).json({ error: "email_in_use" });
   }
 
-  const nextPasswordHash = String(new_password || "").trim()
-    ? await bcrypt.hash(String(new_password), 10)
+  if (wantsPasswordChange) {
+    const currentPassword = String(payload.current_password || "");
+    if (!currentPassword) return res.status(400).json({ error: "missing_fields" });
+    const ok = req.user.password_hash ? await bcrypt.compare(currentPassword, req.user.password_hash) : false;
+    if (!ok) return res.status(400).json({ error: "invalid_password" });
+  }
+
+  const nextPasswordHash = wantsPasswordChange
+    ? await bcrypt.hash(String(payload.new_password), 10)
     : req.user.password_hash;
 
   const userRes = await query(
@@ -461,17 +515,29 @@ app.patch("/api/me", auth, async (req, res) => {
   const nextUsers = Array.isArray(state.users) ? [...state.users] : [];
   const userIndex = nextUsers.findIndex((user) => user.id === req.user.id);
   const previousStateUser = userIndex >= 0 ? nextUsers[userIndex] : {};
+  const nextEmergency = hasEmergencyContact
+    ? {
+        name: String(payload.emergency_contact?.name || "").trim(),
+        phone: String(payload.emergency_contact?.phone || "").trim(),
+      }
+    : {
+        name: String(previousStateUser.emergency_contact?.name || ""),
+        phone: String(previousStateUser.emergency_contact?.phone || ""),
+      };
+  const nextWage = hasWage
+    ? (payload.wage === "" || payload.wage == null ? "" : payload.wage)
+    : (previousStateUser.wage ?? "");
   const mergedStateUser = {
     ...previousStateUser,
     id: req.user.id,
-    location_id: req.user.location_id,
+    location_id: updatedUser.location_id,
     full_name: trimmedName,
     email: normalizedEmail,
-    role: req.user.role,
-    is_active: req.user.is_active,
-    phone: nextPhone,
-    birthday: nextBirthday,
-    pronouns: nextPronouns,
+    role: updatedUser.role,
+    is_active: updatedUser.is_active,
+    phone: hasPhone ? String(payload.phone || "").trim() : String(previousStateUser.phone || ""),
+    birthday: hasBirthday ? String(payload.birthday || "").trim() : String(previousStateUser.birthday || ""),
+    pronouns: hasPronouns ? String(payload.pronouns || "").trim() : String(previousStateUser.pronouns || ""),
     emergency_contact: nextEmergency,
     attachments: Array.isArray(previousStateUser.attachments) ? previousStateUser.attachments : [],
     notes: String(previousStateUser.notes || ""),
@@ -509,15 +575,17 @@ app.post("/api/state", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/users", auth, async (req, res) => {
+app.post("/api/users", auth, requireRole("manager", "owner"), async (req, res) => {
   const { full_name, email, role, location_id, password } = req.body || {};
   if (!full_name || !email) return res.status(400).json({ error: "missing_fields" });
-  const existing = await query("SELECT id FROM users WHERE email = $1", [email.toLowerCase()]);
+  const normalizedEmail = normalizeEmailInput(email);
+  if (!normalizedEmail) return res.status(400).json({ error: "missing_fields" });
+  const existing = await query("SELECT id FROM users WHERE email = $1", [normalizedEmail]);
   if (existing.rows[0]) return res.status(400).json({ error: "email_in_use" });
   const hash = password ? await bcrypt.hash(password, 10) : null;
   const userRes = await query(
     "INSERT INTO users (org_id, location_id, full_name, email, password_hash, role, is_active) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING *",
-    [req.user.org_id, location_id || req.user.location_id, full_name, email.toLowerCase(), hash, role || "employee"]
+    [req.user.org_id, location_id || req.user.location_id, full_name, normalizedEmail, hash, role || "employee"]
   );
   res.json({ user: sanitizeUser(userRes.rows[0]) });
 });
@@ -537,7 +605,7 @@ app.post("/api/push/subscribe", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/notify", auth, async (req, res) => {
+app.post("/api/notify", auth, requireRole("manager", "owner"), async (req, res) => {
   const { user_ids, title, body, channels } = req.body || {};
   if (!Array.isArray(user_ids) || user_ids.length === 0) return res.status(400).json({ error: "missing_recipients" });
   const usersRes = await query("SELECT id, email FROM users WHERE id = ANY($1)", [user_ids]);
@@ -566,12 +634,10 @@ app.post("/api/notify", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/invite", auth, async (req, res) => {
-  if (!["manager", "owner"].includes(req.user.role)) return res.status(403).json({ error: "forbidden" });
-
+app.post("/api/invite", auth, requireRole("manager", "owner"), async (req, res) => {
   const { full_name, email, phone, role, location_id } = req.body || {};
   const trimmedName = String(full_name || "").trim();
-  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedEmail = normalizeEmailInput(email);
   const trimmedPhone = String(phone || "").trim();
   const inviteRole = String(role || "employee").trim().toLowerCase();
 
@@ -579,7 +645,7 @@ app.post("/api/invite", auth, async (req, res) => {
     return res.status(400).json({ error: "missing_fields" });
   }
   if (!["employee", "manager"].includes(inviteRole)) {
-    return res.status(400).json({ error: "forbidden" });
+    return res.status(400).json({ error: "invalid_role" });
   }
 
   let nextLocationId = location_id || null;
@@ -765,9 +831,8 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  const allowedOrigins = Array.from(APP_ALLOWED_ORIGINS.values());
   console.log(`Shiftway server listening on ${PORT}`);
   if (isProd) {
-    console.log(`[shiftway-server] Allowed CORS origins: ${allowedOrigins.join(", ") || "(none configured)"}`);
+    console.log(`[shiftway-server] Allowed CORS origins: ${allowedWebOrigins.join(", ") || "(none configured)"}`);
   }
 });
