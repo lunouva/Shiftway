@@ -1529,15 +1529,6 @@ function InnerApp(props) {
   const currentStateUser = data.users.find((user) => user.id === currentUser?.id) || normalizeUser(currentUser || {});
   const positionColors = useMemo(() => Object.fromEntries(positions.map((position, index) => [position.id, POSITION_COLOR_PALETTE[index % POSITION_COLOR_PALETTE.length]])), [positions]);
 
-  if (!currentUser) return <LoginPage backendMode={backendMode} onAfterLogin={(u) => setTab(u.role === "employee" ? "my" : "schedule")} />;
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-3xl p-6">
-        <div className="rounded-2xl border p-6 text-sm">Loading your workspace…</div>
-      </div>
-    );
-  }
   const openShifts = (schedule?.shifts || []).filter((shift) => !shift.user_id);
   const pendingSwapCount = (data.shift_swaps || []).filter((swap) => swap.status === "pending_manager").length;
   const pendingTimeOffCount = (data.time_off_requests || []).filter((request) => request.status === "pending").length;
@@ -1558,6 +1549,16 @@ function InnerApp(props) {
   const navItems = (isManager ? MANAGER_NAV : EMPLOYEE_NAV).filter((item) => !item.flag || flags[item.flag]);
   const navBadgeCounts = { pending: pendingCount };
   const locationById = useMemo(() => Object.fromEntries((data.locations || []).map((entry) => [entry.id, entry])), [data.locations]);
+
+  if (!currentUser) return <LoginPage backendMode={backendMode} onAfterLogin={(u) => setTab(u.role === "employee" ? "my" : "schedule")} />;
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl p-6">
+        <div className="rounded-2xl border p-6 text-sm">Loading your workspace…</div>
+      </div>
+    );
+  }
 
   const shiftWeek = (delta) => setWeekStart((s) => fmtDate(startOfWeek(addDays(s, delta * 7), flags.weekStartsOn)));
   const handlePrint = () => window.print();
