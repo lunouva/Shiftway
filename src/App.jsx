@@ -18,6 +18,14 @@ import React, { useEffect, useMemo, useState, createContext, useContext } from "
 
 // ---------- constants ----------
 const WEEK_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const POSITION_COLOR_PALETTE = [
+  { key: "brand", border: "border-l-brand", bg: "bg-brand-lightest", dot: "bg-brand" },
+  { key: "brand-dark", border: "border-l-brand-dark", bg: "bg-sky-50", dot: "bg-brand-dark" },
+  { key: "coral", border: "border-l-rose-400", bg: "bg-rose-50", dot: "bg-rose-400" },
+  { key: "amber", border: "border-l-amber-400", bg: "bg-amber-50", dot: "bg-amber-400" },
+  { key: "purple", border: "border-l-violet-400", bg: "bg-violet-50", dot: "bg-violet-400" },
+  { key: "emerald", border: "border-l-emerald-400", bg: "bg-emerald-50", dot: "bg-emerald-400" },
+];
 
 // ---------- date utils (safe) ----------
 const safeDate = (v) => {
@@ -57,6 +65,13 @@ const minutes = (hhmm) => {
 const rangesOverlap = (aStart, aEnd, bStart, bEnd) => Math.max(aStart, bStart) < Math.min(aEnd, bEnd);
 
 const hoursBetween = (a, b, breakMin = 0) => Math.max(0, (safeDate(b) - safeDate(a) - (Number(breakMin) || 0) * 60000) / 3600000);
+const formatCurrency = (value) => `$${(Number(value) || 0).toFixed(2)}`;
+const getInitials = (name) => String(name || "")
+  .split(/\s+/)
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0]?.toUpperCase() || "")
+  .join("") || "U";
 
 const download = (filename, text) => {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
@@ -138,11 +153,11 @@ const seedData = () => ({
     { id: uid(), location_id: "loc1", name: "Manager" },
   ],
   users: [
-    { id: uid(), location_id: "loc1", full_name: "Manager Mike", email: "manager@demo.local", password: "demo", role: "manager", is_active: true, phone: "", birthday: "", pronouns: "", emergency_contact: { name: "", phone: "" }, attachments: [], notes: "" },
-    { id: uid(), location_id: "loc1", full_name: "Owner Olivia", email: "owner@demo.local", password: "demo", role: "owner", is_active: true, phone: "", birthday: "", pronouns: "", emergency_contact: { name: "", phone: "" }, attachments: [], notes: "" },
-    { id: uid(), location_id: "loc1", full_name: "Lily Adams", email: "lily@example.com", password: "demo", role: "employee", is_active: true, phone: "", birthday: "", pronouns: "she/her", emergency_contact: { name: "A. Adams", phone: "555-0102" }, attachments: [], notes: "" },
-    { id: uid(), location_id: "loc1", full_name: "Gavin Reed", email: "gavin@example.com", password: "demo", role: "employee", is_active: true, phone: "", birthday: "", pronouns: "he/him", emergency_contact: { name: "R. Reed", phone: "555-0103" }, attachments: [], notes: "" },
-    { id: uid(), location_id: "loc1", full_name: "Riley Brooks", email: "riley@example.com", password: "demo", role: "employee", is_active: true, phone: "", birthday: "", pronouns: "they/them", emergency_contact: { name: "K. Brooks", phone: "555-0104" }, attachments: [], notes: "" },
+    { id: uid(), location_id: "loc1", full_name: "Manager Mike", email: "manager@demo.local", password: "demo", role: "manager", is_active: true, phone: "", birthday: "", pronouns: "", emergency_contact: { name: "", phone: "" }, attachments: [], notes: "", wage: 28 },
+    { id: uid(), location_id: "loc1", full_name: "Owner Olivia", email: "owner@demo.local", password: "demo", role: "owner", is_active: true, phone: "", birthday: "", pronouns: "", emergency_contact: { name: "", phone: "" }, attachments: [], notes: "", wage: 34 },
+    { id: uid(), location_id: "loc1", full_name: "Lily Adams", email: "lily@example.com", password: "demo", role: "employee", is_active: true, phone: "", birthday: "", pronouns: "she/her", emergency_contact: { name: "A. Adams", phone: "555-0102" }, attachments: [], notes: "", wage: 18.5 },
+    { id: uid(), location_id: "loc1", full_name: "Gavin Reed", email: "gavin@example.com", password: "demo", role: "employee", is_active: true, phone: "", birthday: "", pronouns: "he/him", emergency_contact: { name: "R. Reed", phone: "555-0103" }, attachments: [], notes: "", wage: 17.25 },
+    { id: uid(), location_id: "loc1", full_name: "Riley Brooks", email: "riley@example.com", password: "demo", role: "employee", is_active: true, phone: "", birthday: "", pronouns: "they/them", emergency_contact: { name: "K. Brooks", phone: "555-0104" }, attachments: [], notes: "", wage: 19 },
   ],
   schedules: [],
   time_off_requests: [],
@@ -152,6 +167,7 @@ const seedData = () => ({
   task_templates: [], // {id, title}
   messages: [], // {id, from_user_id, to_user_id, body, created_at}
   shift_swaps: [], // {id, from_user_id, to_user_id, from_shift_id, to_shift_id?, status, notes, created_at}
+  open_shift_claims: [], // {id, shift_id, user_id, status, created_at}
   notification_settings: { email: true, sms: false, push: false },
   feature_flags: defaultFlags(),
 });
@@ -168,12 +184,13 @@ const liveBootstrapData = () => ({
   task_templates: [],
   messages: [],
   shift_swaps: [],
+  open_shift_claims: [],
   notification_settings: { email: true, sms: false, push: false },
   feature_flags: defaultFlags(),
 });
 
 const normalizeUser = (u) => {
-  const base = { phone: "", birthday: "", pronouns: "", attachments: [], notes: "" };
+  const base = { phone: "", birthday: "", pronouns: "", attachments: [], notes: "", wage: "" };
   const emergency = { name: "", phone: "", ...(u?.emergency_contact || {}) };
   return { ...base, ...u, emergency_contact: emergency };
 };
@@ -189,6 +206,7 @@ const loadData = () => {
     if (!parsed.task_templates) parsed.task_templates = [];
     if (!parsed.messages) parsed.messages = [];
     if (!parsed.shift_swaps) parsed.shift_swaps = [];
+    if (!parsed.open_shift_claims) parsed.open_shift_claims = [];
     if (!parsed.notification_settings) parsed.notification_settings = { email: true, sms: false, push: false };
     if (!parsed.feature_flags) parsed.feature_flags = defaultFlags();
     if (parsed.feature_flags.weekStartsOn == null) parsed.feature_flags.weekStartsOn = 1;
@@ -241,6 +259,7 @@ const friendlyApiError = (code) => {
     bad_gateway: "The backend is temporarily unavailable behind a proxy. Please retry in a moment.",
     gateway_timeout: "The backend took too long to respond. Please retry in a moment.",
     invalid_json: "The server could not read that request. Please refresh and try again.",
+    invalid_password: "Your current password is incorrect.",
     payload_too_large: "That request is too large. Try a smaller upload or shorter message.",
     db_not_configured: "Backend is running, but database configuration is missing.",
     db_unreachable: "Backend is running, but it cannot reach the database.",
@@ -363,10 +382,10 @@ function Section({ title, right, children }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{title}</h2>
+        <h2 className="text-xl font-semibold text-brand-text">{title}</h2>
         <div>{right}</div>
       </div>
-      <div className="rounded-2xl border p-4 shadow-sm">{children}</div>
+      <div className="rounded-2xl border border-brand-light/70 bg-white p-4 shadow-sm">{children}</div>
     </div>
   );
 }
@@ -383,14 +402,14 @@ function Toolbar({ children }) {
 
 function TextInput({ label, value, onChange, type = "text", placeholder }) {
   return (
-    <label className="grid gap-1 text-sm">
-      <span className="text-gray-600">{label}</span>
+    <label className="grid gap-1 text-sm text-brand-text">
+      <span className="text-brand-text/75">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="rounded-xl border px-3 py-2"
+        className="rounded-xl border border-brand-light/80 bg-white px-3 py-2 text-sm"
       />
     </label>
   );
@@ -398,18 +417,18 @@ function TextInput({ label, value, onChange, type = "text", placeholder }) {
 
 function TextArea({ label, value, onChange, placeholder }) {
   return (
-    <label className="grid gap-1 text-sm">
-      <span className="text-gray-600">{label}</span>
-      <textarea value={value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} className="min-h-[80px] rounded-xl border px-3 py-2" />
+    <label className="grid gap-1 text-sm text-brand-text">
+      <span className="text-brand-text/75">{label}</span>
+      <textarea value={value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} className="min-h-[80px] rounded-xl border border-brand-light/80 bg-white px-3 py-2 text-sm" />
     </label>
   );
 }
 
 function Select({ label, value, onChange, options }) {
   return (
-    <label className="grid gap-1 text-sm">
-      <span className="text-gray-600">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl border px-3 py-2">
+    <label className="grid gap-1 text-sm text-brand-text">
+      <span className="text-brand-text/75">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl border border-brand-light/80 bg-white px-3 py-2 text-sm">
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -422,13 +441,21 @@ function Select({ label, value, onChange, options }) {
 
 function Checkbox({ label, checked, onChange, hint }) {
   return (
-    <label className="flex items-start gap-2 text-sm">
+    <label className="flex items-start gap-2 text-sm text-brand-text">
       <input type="checkbox" checked={checked} onChange={(e)=>onChange(e.target.checked)} className="mt-1"/>
       <span>
         <span className="font-medium">{label}</span>
-        {hint && <div className="text-xs text-gray-600">{hint}</div>}
+        {hint && <div className="text-xs text-brand-text/70">{hint}</div>}
       </span>
     </label>
+  );
+}
+
+function AvatarBadge({ name, className = "" }) {
+  return (
+    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-light font-semibold text-brand-darker ${className}`}>
+      {getInitials(name)}
+    </span>
   );
 }
 
@@ -556,7 +583,25 @@ function AuthProvider({ children, data, setData, backendMode, clientSettings, on
 }
 
 // ---------- week grid ----------
-function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, timeOffList, showTimeOffChips, onCreate, onDelete }) {
+function WeekGrid({
+  employees,
+  weekDays,
+  shifts,
+  positionsById,
+  unavailability,
+  timeOffList,
+  showTimeOffChips,
+  positionColors,
+  showLaborCost,
+  laborCostByDay,
+  currentUser,
+  openShiftClaims,
+  onCreate,
+  onDelete,
+  onSwap,
+  onMarkOpen,
+  onClaimOpen,
+}) {
   const byUserUnav = useMemo(() => {
     const map = {};
     for (const u of employees) map[u.id] = [];
@@ -573,6 +618,18 @@ function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, 
     return m;
   }, [employees, timeOffList]);
 
+  const pendingClaimByShiftId = Object.fromEntries((openShiftClaims || [])
+    .filter((claim) => claim.status === "pending")
+    .map((claim) => [claim.shift_id, claim]));
+  const openShiftsByDay = Object.fromEntries(weekDays.map((day) => [fmtDate(day), []]));
+  for (const shift of shifts || []) {
+    if (!shift.user_id) {
+      const key = fmtDate(shift.starts_at);
+      if (!openShiftsByDay[key]) openShiftsByDay[key] = [];
+      openShiftsByDay[key].push(shift);
+    }
+  }
+
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[1000px]">
@@ -580,12 +637,51 @@ function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, 
           <div className="sticky left-0 z-10 bg-brand-lightest p-2 font-semibold text-brand-text">Employee</div>
           {weekDays.map((d) => (
             <div key={String(d)} className="bg-brand-lightest p-2 text-center font-semibold text-brand-text">
-              {fmtDateLabel(d)}
+              <div>{fmtDateLabel(d)}</div>
+              {showLaborCost && (
+                <div className="mt-1 text-[11px] font-medium text-brand-darker">
+                  Labor {formatCurrency(laborCostByDay?.[fmtDate(d)] || 0)}
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="sticky left-0 z-10 border-t border-brand-light bg-amber-50 p-2 font-semibold text-amber-900">Open shifts</div>
+          {weekDays.map((day) => (
+            <div key={`open-${fmtDate(day)}`} className="border-l border-t border-brand-light bg-amber-50/60 p-2 min-h-24">
+              <div className="space-y-2">
+                {(openShiftsByDay[fmtDate(day)] || []).length === 0 && (
+                  <div className="rounded-xl border border-dashed border-amber-300 px-2 py-2 text-xs text-amber-800">No open shifts</div>
+                )}
+                {(openShiftsByDay[fmtDate(day)] || []).map((s) => {
+                  const tone = positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0];
+                  const pendingClaim = pendingClaimByShiftId[s.id];
+                  const canClaim = currentUser?.role === "employee" && !pendingClaim;
+                  return (
+                    <div key={s.id} className={`rounded-lg border border-amber-200 border-l-4 ${tone.border} ${tone.bg} px-2 py-2 text-sm shadow-sm`}>
+                      <div className="font-medium text-brand-text">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
+                      <div className="text-xs text-brand-text/70">{positionsById[s.position_id]?.name || "Open role"}</div>
+                      {pendingClaim && (
+                        <div className="mt-1 text-[11px] font-medium text-amber-800">Claim pending approval</div>
+                      )}
+                      {canClaim && (
+                        <button className="mt-2 rounded-xl border border-brand-dark bg-brand-dark px-2 py-1 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onClaimOpen?.(s)}>
+                          Claim
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
           {employees.map((emp) => (
             <React.Fragment key={emp.id}>
-              <div className="sticky left-0 z-10 border-t bg-brand-lightest p-2 font-medium text-brand-text">{emp.full_name}</div>
+              <div className="sticky left-0 z-10 border-t border-brand-light bg-brand-lightest p-2 font-medium text-brand-text">
+                <div className="flex items-center gap-2">
+                  <AvatarBadge name={emp.full_name} className="h-7 w-7 text-xs" />
+                  <span>{emp.full_name}</span>
+                </div>
+              </div>
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((s) => s.user_id === emp.id && fmtDate(s.starts_at) === fmtDate(day));
                 const dayUnav = (byUserUnav[emp.id] || []).filter((ua) =>
@@ -593,7 +689,7 @@ function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, 
                 );
                 const dayTimeOff = (byUserTimeOff[emp.id] || []).filter((r)=> isDateWithin(fmtDate(day), r.date_from, r.date_to));
                 return (
-                  <div key={emp.id + fmtDate(day)} className="border-l border-t p-2 min-h-24">
+                  <div key={emp.id + fmtDate(day)} className="border-l border-t border-brand-light p-2 min-h-24">
                     <div className="space-y-2">
                       {showTimeOffChips && dayTimeOff.map((r)=> (
                         <div key={r.id} className={`rounded-xl border px-2 py-1 text-xs ${r.status==='approved' ? 'border-green-300 bg-green-50 text-green-700' : r.status==='pending' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-300 bg-gray-50 text-gray-700'}`}>
@@ -606,12 +702,23 @@ function WeekGrid({ employees, weekDays, shifts, positionsById, unavailability, 
                         </div>
                       ))}
                       {dayShifts.map((s) => (
-                        <div key={s.id} className="rounded-xl border px-2 py-1 text-sm shadow-sm">
+                        <div key={s.id} className={`rounded-lg border border-brand-light border-l-4 ${(positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0]).border} ${(positionColors?.[s.position_id] || POSITION_COLOR_PALETTE[0]).bg} px-2 py-2 text-sm shadow-sm`}>
                           <div className="flex items-center justify-between gap-2">
-                            <div className="font-medium">{fmtTime(s.starts_at)} – {fmtTime(s.ends_at)}</div>
+                            <div className="flex items-center gap-2">
+                              <AvatarBadge name={emp.full_name} className="h-6 w-6 text-[10px]" />
+                              <div className="font-medium">{fmtTime(s.starts_at)} - {fmtTime(s.ends_at)}</div>
+                            </div>
                             <button className="text-xs text-brand-dark underline" onClick={() => onDelete(s.id)}>delete</button>
                           </div>
-                          <div className="text-xs text-gray-600">{positionsById[s.position_id]?.name || "—"}</div>
+                          <div className="text-xs text-brand-text/70">{positionsById[s.position_id]?.name || "—"}</div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {onSwap && (
+                              <button className="text-xs text-brand-dark underline" onClick={() => onSwap(s)}>Swap</button>
+                            )}
+                            {onMarkOpen && (
+                              <button className="text-xs text-brand-dark underline" onClick={() => onMarkOpen(s.id)}>Open</button>
+                            )}
+                          </div>
                         </div>
                       ))}
                       <button className="text-xs text-brand-dark underline" onClick={() => onCreate(emp.id, day)}>+ add</button>
@@ -813,21 +920,18 @@ export default function App() {
   const updateUnavailability = (ua) => setData((d)=> ({ ...d, unavailability: d.unavailability.map(x => x.id===ua.id ? { ...x, ...ua } : x) }));
   const deleteUnavailability = (id) => setData((d) => ({ ...d, unavailability: d.unavailability.filter((x) => x.id !== id) }));
 
-  // NOTE: we cannot safely destructure useAuth here because App is *outside* the provider.
-  // Use a null-guarded lookup for the current user id when creating quick tasks.
-  const auth = useAuth();
-  const currentUserId = auth?.currentUser?.id || null;
+  const currentUserId = authUser?.id || null;
 
-  const createShift = ({ user_id, position_id, day, start_hhmm, end_hhmm, break_min, notes, quickTaskTitle, quickTaskTemplateId }) => {
+  const createShift = ({ user_id, position_id, day, start_hhmm, end_hhmm, break_min, notes, quickTaskTitle, quickTaskTemplateId, is_open }) => {
     // Unavailability override with confirm
-    const conflicts = hasUnavailabilityConflict(user_id, day, start_hhmm, end_hhmm);
+    const conflicts = user_id ? hasUnavailabilityConflict(user_id, day, start_hhmm, end_hhmm) : [];
     if (conflicts.length) {
       const lines = conflicts.slice(0, 3).map((c) => `${c.kind === 'weekly' ? 'Weekly' : c.date}: ${c.start_hhmm}–${c.end_hhmm}${c.notes ? ' • ' + c.notes : ''}`).join('\n');
       const ok = confirm(`This shift overlaps with unavailability:\n${lines}\n\nSchedule anyway?`);
       if (!ok) return;
     }
     // Time‑off warning with confirm
-    const timeOffMatches = hasTimeOffConflict(user_id, day);
+    const timeOffMatches = user_id ? hasTimeOffConflict(user_id, day) : [];
     if (timeOffMatches.length) {
       const lines = timeOffMatches.slice(0, 3).map((r)=> `${r.date_from}→${r.date_to} (${r.status})${r.notes ? ' • ' + r.notes : ''}`).join('\n');
       const ok = confirm(`This shift falls during time off:\n${lines}\n\nSchedule anyway?`);
@@ -836,26 +940,60 @@ export default function App() {
 
     const starts = combineDayAndTime(day, start_hhmm);
     const ends = combineDayAndTime(day, end_hhmm);
-    const shift = { id: uid(), position_id, user_id, starts_at: starts.toISOString(), ends_at: ends.toISOString(), break_min: Number(break_min || 0), notes: notes || "" };
+    const assignedUserId = is_open ? null : user_id;
+    const shift = { id: uid(), position_id, user_id: assignedUserId, starts_at: starts.toISOString(), ends_at: ends.toISOString(), break_min: Number(break_min || 0), notes: notes || "" };
     ensureSchedule();
     upsertSchedule((s) => ({ ...s, shifts: [...s.shifts, shift] }));
 
     // Optional quick task creation
-    if (quickTaskTemplateId) {
+    if (assignedUserId && quickTaskTemplateId) {
       const template = data.task_templates.find(t=> t.id===quickTaskTemplateId);
-      if (template) addTask(template.title, user_id, fmtDate(day), currentUserId || user_id);
-    } else if (quickTaskTitle && quickTaskTitle.trim()) {
-      addTask(quickTaskTitle.trim(), user_id, fmtDate(day), currentUserId || user_id);
+      if (template) addTask(template.title, assignedUserId, fmtDate(day), currentUserId || assignedUserId);
+    } else if (assignedUserId && quickTaskTitle && quickTaskTitle.trim()) {
+      addTask(quickTaskTitle.trim(), assignedUserId, fmtDate(day), currentUserId || assignedUserId);
     }
   };
 
   const deleteShift = (shiftId) => { if (!schedule) return; upsertSchedule((s) => ({ ...s, shifts: s.shifts.filter((x) => x.id !== shiftId) })); };
+  const markShiftOpen = (shiftId) => {
+    if (!schedule) return;
+    upsertSchedule((s) => ({
+      ...s,
+      shifts: s.shifts.map((shift) => (shift.id === shiftId ? { ...shift, user_id: null } : shift)),
+      status: "draft",
+    }));
+  };
   const publish = () => { if (!schedule) return; upsertSchedule((s) => ({ ...s, status: s.status === "draft" ? "published" : "draft" })); };
+  const copyLastWeek = () => {
+    const prevWeekStart = fmtDate(addDays(weekStart, -7));
+    const prevSchedule = data.schedules.find((s) => s.location_id === location.id && s.week_start === prevWeekStart);
+    if (!prevSchedule) return alert("No schedule found for last week.");
+    if (schedule?.shifts?.length && !confirm("Replace this week's current shifts with a draft copy of last week?")) return;
+    const copiedShifts = (prevSchedule.shifts || []).map((shift) => ({
+      ...shift,
+      id: uid(),
+      starts_at: addDays(shift.starts_at, 7).toISOString(),
+      ends_at: addDays(shift.ends_at, 7).toISOString(),
+    }));
+    const nextSchedule = { id: schedule?.id || uid(), location_id: location.id, week_start: weekStart, status: "draft", shifts: copiedShifts };
+    setData((d) => {
+      const exists = d.schedules.some((s) => s.location_id === location.id && s.week_start === weekStart);
+      return {
+        ...d,
+        schedules: exists
+          ? d.schedules.map((s) => (s.location_id === location.id && s.week_start === weekStart ? nextSchedule : s))
+          : [...d.schedules, nextSchedule],
+      };
+    });
+  };
 
   const totalHoursByUser = useMemo(() => {
     const totals = Object.fromEntries(users.map((u) => [u.id, 0]));
     if (!schedule) return totals;
-    for (const sh of schedule.shifts) totals[sh.user_id] = (totals[sh.user_id] || 0) + hoursBetween(sh.starts_at, sh.ends_at, sh.break_min);
+    for (const sh of schedule.shifts) {
+      if (!sh.user_id) continue;
+      totals[sh.user_id] = (totals[sh.user_id] || 0) + hoursBetween(sh.starts_at, sh.ends_at, sh.break_min);
+    }
     return totals;
   }, [schedule, users]);
 
@@ -973,6 +1111,99 @@ export default function App() {
     }
   };
 
+  const createOpenShiftClaim = (shiftId, userId) => {
+    const existingPending = (data.open_shift_claims || []).find((claim) => claim.shift_id === shiftId && claim.user_id === userId && claim.status === "pending");
+    if (existingPending) return;
+    const claim = { id: uid(), shift_id: shiftId, user_id: userId, status: "pending", created_at: new Date().toISOString() };
+    setData((d) => ({ ...d, open_shift_claims: [claim, ...(d.open_shift_claims || [])] }));
+    const managers = data.users.filter((u) => u.role !== "employee").map((u) => u.id);
+    notifyUsers(managers, "Open shift claim", `${data.users.find((u) => u.id === userId)?.full_name || "Employee"} requested an open shift.`);
+  };
+
+  const setOpenShiftClaimStatus = (id, status) => {
+    const claim = (data.open_shift_claims || []).find((entry) => entry.id === id);
+    if (!claim) return;
+    setData((d) => {
+      const nextClaims = (d.open_shift_claims || []).map((entry) => {
+        if (entry.id === id) return { ...entry, status };
+        if (status === "approved" && entry.shift_id === claim.shift_id && entry.status === "pending") return { ...entry, status: "denied" };
+        return entry;
+      });
+      let nextSchedules = d.schedules;
+      if (status === "approved") {
+        nextSchedules = d.schedules.map((sched) => ({
+          ...sched,
+          shifts: (sched.shifts || []).map((shift) => (shift.id === claim.shift_id ? { ...shift, user_id: claim.user_id } : shift)),
+        }));
+      }
+      return { ...d, open_shift_claims: nextClaims, schedules: nextSchedules };
+    });
+    if (status === "approved") {
+      notifyUsers([claim.user_id], "Open shift approved", "Your open shift claim was approved.");
+    } else if (status === "denied") {
+      notifyUsers([claim.user_id], "Open shift denied", "Your open shift claim was denied.");
+    }
+  };
+
+  const saveProfile = async ({ full_name, phone, pronouns, birthday, emergency_contact, email, current_password, new_password, wage }) => {
+    const nextPayload = {
+      full_name: String(full_name || "").trim(),
+      phone: String(phone || "").trim(),
+      pronouns: String(pronouns || "").trim(),
+      birthday: String(birthday || "").trim(),
+      emergency_contact: {
+        name: String(emergency_contact?.name || "").trim(),
+        phone: String(emergency_contact?.phone || "").trim(),
+      },
+      email: String(email || "").trim().toLowerCase(),
+      current_password: String(current_password || ""),
+      new_password: String(new_password || ""),
+      wage: wage === "" || wage == null ? "" : Number(wage),
+    };
+
+    if (!nextPayload.full_name) throw new Error("Full name is required.");
+
+    if (!backendMode) {
+      const demoUser = data.users.find((u) => u.id === currentUserId);
+      const needsCredentialCheck = (nextPayload.email && nextPayload.email !== demoUser?.email) || nextPayload.new_password;
+      if (needsCredentialCheck && nextPayload.current_password !== (demoUser?.password || "demo")) {
+        throw new Error("Current password is incorrect.");
+      }
+      setData((d) => ({
+        ...d,
+        users: d.users.map((user) => user.id === currentUserId ? {
+          ...user,
+          full_name: nextPayload.full_name,
+          email: nextPayload.email || user.email,
+          phone: nextPayload.phone,
+          pronouns: nextPayload.pronouns,
+          birthday: nextPayload.birthday,
+          emergency_contact: nextPayload.emergency_contact,
+          wage: nextPayload.wage,
+          ...(nextPayload.new_password ? { password: nextPayload.new_password } : {}),
+        } : user),
+      }));
+      return true;
+    }
+
+    const token = localStorage.getItem(TOKEN_KEY);
+    await apiFetch("/api/me", { token, method: "PATCH", body: nextPayload }, clientSettings);
+    setData((d) => ({
+      ...d,
+      users: d.users.map((user) => user.id === currentUserId ? {
+        ...user,
+        full_name: nextPayload.full_name,
+        email: nextPayload.email || user.email,
+        phone: nextPayload.phone,
+        pronouns: nextPayload.pronouns,
+        birthday: nextPayload.birthday,
+        emergency_contact: nextPayload.emergency_contact,
+        wage: nextPayload.wage,
+      } : user),
+    }));
+    return true;
+  };
+
   // Newsfeed
   const addPost = (user_id, body) => {
     const post = { id: uid(), user_id, body: body.trim(), created_at: new Date().toISOString() };
@@ -1011,7 +1242,7 @@ export default function App() {
     try {
       const token = localStorage.getItem(TOKEN_KEY);
       const res = await apiFetch("/api/users", { token, method: "POST", body: payload }, clientSettings);
-      if (res?.user) setData((d) => ({ ...d, users: [...d.users, res.user] }));
+      if (res?.user) setData((d) => ({ ...d, users: [...d.users, normalizeUser({ ...payload, ...res.user, attachments: payload.attachments || [] })] }));
     } catch (e) {
       alert(e.message || "Unable to add employee");
     }
@@ -1053,7 +1284,9 @@ export default function App() {
         ensureSchedule={ensureSchedule}
         createShift={createShift}
         deleteShift={deleteShift}
+        markShiftOpen={markShiftOpen}
         publish={publish}
+        copyLastWeek={copyLastWeek}
         totalHoursByUser={totalHoursByUser}
         totalHoursByDay={totalHoursByDay}
         copyCsv={copyCsv}
@@ -1071,10 +1304,13 @@ export default function App() {
         setTimeOffStatus={setTimeOffStatus}
         createSwapRequest={createSwapRequest}
         setSwapStatus={setSwapStatus}
+        createOpenShiftClaim={createOpenShiftClaim}
+        setOpenShiftClaimStatus={setOpenShiftClaimStatus}
         addUnavailability={addUnavailability}
         updateUnavailability={updateUnavailability}
         deleteUnavailability={deleteUnavailability}
         unavailability={data.unavailability || []}
+        saveProfile={saveProfile}
         addPost={addPost}
         addTask={addTask}
         setTaskStatus={setTaskStatus}
@@ -1090,9 +1326,9 @@ export default function App() {
 function InnerApp(props) {
   const {
     data, setData, clientSettings, setClientSettings, backendMode, apiBase, apiError, setApiError, loading, tab, setTab, locationId, setLocationId, weekStart, setWeekStart,
-    users, positions, positionsById, weekDays, schedule, ensureSchedule, createShift, deleteShift,
-    publish, totalHoursByUser, totalHoursByDay, copyCsv, exportCsv, resetDemo, shiftModal, setShiftModal, swapModal, setSwapModal, inviteModal, setInviteModal,
-    addEmployee, addPosition, createTimeOff, setTimeOffStatus, createSwapRequest, setSwapStatus, addUnavailability, updateUnavailability, deleteUnavailability, unavailability,
+    users, positions, positionsById, weekDays, schedule, ensureSchedule, createShift, deleteShift, markShiftOpen,
+    publish, copyLastWeek, totalHoursByUser, totalHoursByDay, copyCsv, exportCsv, resetDemo, shiftModal, setShiftModal, swapModal, setSwapModal, inviteModal, setInviteModal,
+    addEmployee, addPosition, createTimeOff, setTimeOffStatus, createSwapRequest, setSwapStatus, createOpenShiftClaim, setOpenShiftClaimStatus, addUnavailability, updateUnavailability, deleteUnavailability, unavailability, saveProfile,
     addPost, addTask, setTaskStatus, deleteTask, addTemplate, deleteTemplate, sendMessage,
   } = props;
   const { currentUser, logout } = useAuth();
@@ -1110,8 +1346,28 @@ function InnerApp(props) {
   const flags = data.feature_flags || defaultFlags();
   const isManager = currentUser.role !== "employee";
   const scopedUsers = users;
+  const currentStateUser = data.users.find((user) => user.id === currentUser.id) || normalizeUser(currentUser);
+  const positionColors = useMemo(() => Object.fromEntries(positions.map((position, index) => [position.id, POSITION_COLOR_PALETTE[index % POSITION_COLOR_PALETTE.length]])), [positions]);
+  const openShifts = (schedule?.shifts || []).filter((shift) => !shift.user_id);
+  const pendingSwapCount = (data.shift_swaps || []).filter((swap) => swap.status === "pending_manager").length;
+  const pendingTimeOffCount = (data.time_off_requests || []).filter((request) => request.status === "pending").length;
+  const pendingOpenShiftCount = (data.open_shift_claims || []).filter((claim) => claim.status === "pending").length;
+  const pendingCount = pendingSwapCount + pendingTimeOffCount + pendingOpenShiftCount;
+  const totalScheduledHours = (schedule?.shifts || []).reduce((sum, shift) => sum + hoursBetween(shift.starts_at, shift.ends_at, shift.break_min), 0);
+  const laborCostByDay = useMemo(() => {
+    const totals = Object.fromEntries(weekDays.map((day) => [fmtDate(day), 0]));
+    for (const shift of schedule?.shifts || []) {
+      if (!shift.user_id) continue;
+      const user = data.users.find((entry) => entry.id === shift.user_id);
+      const key = fmtDate(shift.starts_at);
+      totals[key] = (totals[key] || 0) + hoursBetween(shift.starts_at, shift.ends_at, shift.break_min) * (Number(user?.wage) || 0);
+    }
+    return totals;
+  }, [data.users, schedule?.shifts, weekDays]);
+  const totalLaborCost = Object.values(laborCostByDay).reduce((sum, amount) => sum + (Number(amount) || 0), 0);
 
   const shiftWeek = (delta) => setWeekStart((s) => fmtDate(startOfWeek(addDays(s, delta * 7), flags.weekStartsOn)));
+  const handlePrint = () => window.print();
   const enablePush = async () => {
     try {
       if (!("serviceWorker" in navigator)) return alert("Push not supported in this browser.");
@@ -1134,35 +1390,38 @@ function InnerApp(props) {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 text-brand-text">
+      <header className="print-hidden flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-gradient-to-r from-brand-darker via-brand-dark to-brand px-5 py-4 text-white shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="grid place-items-center rounded-2xl border border-brand-light bg-brand-lightest p-2 shadow-sm">
-            <div className="h-8 w-8 rounded-xl border border-brand-light bg-brand" />
+          <div className="grid place-items-center rounded-2xl border border-white/20 bg-white/10 p-2 shadow-sm">
+            <div className="h-8 w-8 rounded-xl border border-white/20 bg-white/80" />
           </div>
           <div>
             <h1 className="text-2xl font-black">Shiftway</h1>
-            <div className="text-sm text-gray-600">{isManager ? "Manager Console" : "My Shifts"}</div>
+            <div className="text-sm text-white/80">{isManager ? "Manager Console" : "My Schedule"}</div>
           </div>
         </div>
         <Toolbar>
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm">
-            <span className="text-gray-600">Location</span>
-            <select className="outline-none" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm">
+            <span className="text-white/75">Location</span>
+            <select className="bg-transparent outline-none" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
               {data.locations.map((l) => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
             </select>
           </div>
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm">
-            <span className="text-gray-600">Week</span>
-            <button className="rounded-lg border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" title="Prev week" onClick={()=>shiftWeek(-1)}>◀</button>
-            <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="outline-none" />
-            <button className="rounded-lg border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" title="Jump to current week" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
-            <button className="rounded-lg border border-brand-light bg-brand-lightest px-2 py-1 text-brand-dark transition hover:bg-brand-light" title="Next week" onClick={()=>shiftWeek(1)}>▶</button>
+          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm">
+            <span className="text-white/75">Week</span>
+            <button className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-white transition hover:bg-white/20" title="Prev week" onClick={()=>shiftWeek(-1)}>◀</button>
+            <input type="date" value={weekStart} onChange={(e) => setWeekStart(fmtDate(startOfWeek(e.target.value, flags.weekStartsOn)))} className="bg-transparent outline-none" />
+            <button className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-white transition hover:bg-white/20" title="Jump to current week" onClick={()=> setWeekStart(fmtDate(startOfWeek(today(), flags.weekStartsOn)))}>Today</button>
+            <button className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-white transition hover:bg-white/20" title="Next week" onClick={()=>shiftWeek(1)}>▶</button>
           </div>
-          <div className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm">{currentUser.full_name} <span className="text-gray-500">({currentUser.role})</span></div>
-          <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light" onClick={logout}>Logout</button>
+          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm">
+            <AvatarBadge name={currentStateUser.full_name} className="h-7 w-7 bg-white/80 text-brand-darker" />
+            <span>{currentStateUser.full_name} <span className="text-white/70">({currentStateUser.role})</span></span>
+          </div>
+          <button className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20" onClick={logout}>Logout</button>
         </Toolbar>
       </header>
 
@@ -1179,10 +1438,13 @@ function InnerApp(props) {
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-2">
+      <nav className="print-hidden rounded-3xl bg-brand-darker p-3 shadow-sm">
+        <div className="flex flex-wrap gap-2">
         {isManager && (<>
           <TabBtn id="schedule" tab={tab} setTab={setTab} label="Schedule" />
           <TabBtn id="employees" tab={tab} setTab={setTab} label="Employees" />
+          <TabBtn id="pending" tab={tab} setTab={setTab} label={`Pending${pendingCount ? ` (${pendingCount})` : ""}`} />
+          <TabBtn id="profile" tab={tab} setTab={setTab} label="Profile" />
           {flags.unavailabilityEnabled && <TabBtn id="availability" tab={tab} setTab={setTab} label="Unavailability" />}
           {flags.newsfeedEnabled && <TabBtn id="feed" tab={tab} setTab={setTab} label="Feed" />}
           {flags.tasksEnabled && <TabBtn id="tasks" tab={tab} setTab={setTab} label="Tasks" />}
@@ -1192,12 +1454,14 @@ function InnerApp(props) {
           <TabBtn id="settings" tab={tab} setTab={setTab} label="Settings" />
         </>)}
         {!isManager && (<>
-          <TabBtn id="my" tab={tab} setTab={setTab} label="My" />
+          <TabBtn id="my" tab={tab} setTab={setTab} label="My Schedule" />
+          <TabBtn id="profile" tab={tab} setTab={setTab} label="Profile" />
           {flags.newsfeedEnabled && <TabBtn id="feed" tab={tab} setTab={setTab} label="Feed" />}
           {flags.tasksEnabled && <TabBtn id="tasks" tab={tab} setTab={setTab} label="Tasks" />}
           {flags.messagesEnabled && <TabBtn id="messages" tab={tab} setTab={setTab} label="Messages" />}
           {flags.swapsEnabled && <TabBtn id="swaps" tab={tab} setTab={setTab} label="Swaps" />}
         </>)}
+        </div>
       </nav>
 
       {isManager && tab === "schedule" && (
@@ -1213,37 +1477,66 @@ function InnerApp(props) {
             )
           }
         >
+          <div className="mb-4 grid gap-3 md:grid-cols-4">
+            <SummaryStat label="Total shifts" value={(schedule?.shifts || []).length} />
+            <SummaryStat label="Scheduled hours" value={`${totalScheduledHours.toFixed(2)} h`} />
+            <SummaryStat label="Estimated labor cost" value={formatCurrency(totalLaborCost)} />
+            <SummaryStat label="Open shifts" value={openShifts.length} />
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-brand-light bg-brand-lightest p-3 text-sm">
+            {positions.map((position) => (
+              <div key={position.id} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1">
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${positionColors[position.id]?.dot || "bg-brand"}`} />
+                <span>{position.name}</span>
+              </div>
+            ))}
+          </div>
+
           {scopedUsers.length === 0 ? (
-            <div className="text-sm text-gray-600">Add employees first.</div>
+            <EmptyState icon="🗓" message="Add employees first so you can start building the schedule." />
           ) : (
-            <WeekGrid
-              employees={scopedUsers}
-              weekDays={weekDays}
-              shifts={schedule?.shifts || []}
-              positionsById={positionsById}
-              unavailability={unavailability}
-              timeOffList={data.time_off_requests}
-              showTimeOffChips={flags.showTimeOffOnSchedule}
-              onCreate={(userId, day) => setShiftModal({ open: true, preUserId: userId, preDay: day })}
-              onDelete={deleteShift}
-            />
+            <div className="print-schedule-area rounded-2xl border border-brand-light bg-white p-3">
+              <WeekGrid
+                employees={scopedUsers}
+                weekDays={weekDays}
+                shifts={schedule?.shifts || []}
+                positionsById={positionsById}
+                unavailability={unavailability}
+                timeOffList={data.time_off_requests}
+                showTimeOffChips={flags.showTimeOffOnSchedule}
+                positionColors={positionColors}
+                showLaborCost={true}
+                laborCostByDay={laborCostByDay}
+                currentUser={currentStateUser}
+                openShiftClaims={data.open_shift_claims || []}
+                onCreate={(userId, day) => setShiftModal({ open: true, preUserId: userId, preDay: day })}
+                onDelete={deleteShift}
+                onSwap={(shift) => setSwapModal({ open: true, shift })}
+                onMarkOpen={markShiftOpen}
+                onClaimOpen={(shift) => createOpenShiftClaim(shift.id, currentStateUser.id)}
+              />
+            </div>
           )}
 
           {schedule && (
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border p-3">
+              <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
                 <h4 className="mb-2 font-semibold">Total hours by employee</h4>
                 <ul className="space-y-1 text-sm">
                   {scopedUsers.map((u) => (
-                    <li key={u.id} className="flex justify-between"><span>{u.full_name}</span><span className="tabular-nums">{(totalHoursByUser[u.id] || 0).toFixed(2)} h</span></li>
+                    <li key={u.id} className="flex items-center justify-between gap-3">
+                      <span className="inline-flex items-center gap-2"><AvatarBadge name={u.full_name} className="h-6 w-6 text-[10px]" />{u.full_name}</span>
+                      <span className="tabular-nums">{(totalHoursByUser[u.id] || 0).toFixed(2)} h</span>
+                    </li>
                   ))}
                 </ul>
               </div>
-              <div className="rounded-2xl border p-3">
-                <h4 className="mb-2 font-semibold">Total hours by day</h4>
+              <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+                <h4 className="mb-2 font-semibold">Daily hours and labor</h4>
                 <ul className="space-y-1 text-sm">
                   {weekDays.map((d) => (
-                    <li key={String(d)} className="flex justify-between"><span>{fmtDateLabel(d)}</span><span className="tabular-nums">{(totalHoursByDay[fmtDate(d)] || 0).toFixed(2)} h</span></li>
+                    <li key={String(d)} className="flex justify-between gap-3"><span>{fmtDateLabel(d)}</span><span className="tabular-nums">{(totalHoursByDay[fmtDate(d)] || 0).toFixed(2)} h • {formatCurrency(laborCostByDay[fmtDate(d)] || 0)}</span></li>
                   ))}
                 </ul>
               </div>
@@ -1251,27 +1544,30 @@ function InnerApp(props) {
           )}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => ensureSchedule()}>Ensure Week</button>
-            <button disabled={!schedule} className={`rounded-xl border px-3 py-2 text-sm shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${schedule?.status === "published" ? "border-brand-light bg-brand-light text-brand-text hover:bg-brand" : "border-brand-dark bg-brand-dark text-white hover:bg-brand-darker"}`} onClick={publish}>{schedule?.status === "published" ? "Unpublish" : "Publish"}</button>
-            <button disabled={!schedule} className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60" onClick={copyCsv}>Copy CSV</button>
-            <button disabled={!schedule} className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60" onClick={exportCsv}>Download CSV</button>
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-darker" onClick={() => ensureSchedule()}>Ensure Week</button>
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-darker" onClick={() => setShiftModal({ open: true, preUserId: null, preDay: safeDate(weekStart) })}>Add open shift</button>
+            <button disabled={!schedule} className={`rounded-xl border px-4 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${schedule?.status === "published" ? "border-brand bg-white text-brand-dark hover:bg-brand-lightest" : "border-brand-dark bg-brand-dark text-white hover:bg-brand-darker"}`} onClick={publish}>{schedule?.status === "published" ? "Unpublish" : "Publish"}</button>
+            <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest" onClick={copyLastWeek}>Copy last week</button>
+            <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={handlePrint}>Print</button>
+            <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={copyCsv}>Copy CSV</button>
+            <button disabled={!schedule} className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest disabled:cursor-not-allowed disabled:opacity-60" onClick={exportCsv}>Download CSV</button>
             {DEMO_MODE && SHOW_DEMO_CONTROLS && (
-              <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark shadow-sm transition hover:bg-brand-light" onClick={resetDemo}>Reset Demo</button>
+              <button className="rounded-xl border border-brand bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:bg-brand-lightest" onClick={resetDemo}>Reset Demo</button>
             )}
           </div>
 
           {/* Manager quick inputs below schedule */}
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border p-3">
+            <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
               <h4 className="mb-2 font-semibold">Quick: Add time off</h4>
               <ManagerQuickTimeOff users={scopedUsers} onSubmit={createTimeOff} />
-              <div className="mt-2 text-xs text-gray-600">Full lists & approvals in the <b>Requests</b> tab.</div>
+              <div className="mt-2 text-xs text-brand-text/70">Full lists & approvals in the <b>Pending</b> tab.</div>
             </div>
             {flags.unavailabilityEnabled && (
-              <div className="rounded-2xl border p-3">
+              <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
                 <h4 className="mb-2 font-semibold">Quick: Add weekly unavailability</h4>
                 <ManagerQuickUnavailability users={scopedUsers} onSubmit={addUnavailability} />
-                <div className="mt-2 text-xs text-gray-600">View & edit all in the <b>Unavailability</b> tab.</div>
+                <div className="mt-2 text-xs text-brand-text/70">View & edit all in the <b>Unavailability</b> tab.</div>
               </div>
             )}
           </div>
@@ -1291,11 +1587,25 @@ function InnerApp(props) {
                 {users.map((u) => (
                   <li key={u.id} className="grid gap-2 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                     <div>
-                      <div className="font-medium">{u.full_name} {u.pronouns ? <span className="text-xs text-gray-500">({u.pronouns})</span> : null}</div>
+                      <div className="flex items-center gap-2 font-medium"><AvatarBadge name={u.full_name} className="h-7 w-7 text-xs" />{u.full_name} {u.pronouns ? <span className="text-xs text-gray-500">({u.pronouns})</span> : null}</div>
                       <div className="text-xs text-gray-600">{u.email}{u.phone ? ` • ${u.phone}` : ''}{u.birthday ? ` • Birthday: ${u.birthday}` : ''}</div>
                       {u.emergency_contact?.name && (
                         <div className="text-xs text-gray-600">Emergency: {u.emergency_contact.name} {u.emergency_contact.phone ? `(${u.emergency_contact.phone})` : ''}</div>
                       )}
+                      <div className="mt-2 flex max-w-[220px] items-center gap-2">
+                        <label className="text-xs text-gray-600">Wage</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={u.wage ?? ""}
+                          onChange={(e) => setData((d) => ({
+                            ...d,
+                            users: d.users.map((user) => user.id === u.id ? { ...user, wage: e.target.value === "" ? "" : Number(e.target.value) } : user),
+                          }))}
+                          className="w-full rounded-xl border border-brand-light px-2 py-1 text-sm"
+                        />
+                      </div>
                       {u.notes && <div className="text-xs text-gray-600">Notes: {u.notes}</div>}
                       {(u.attachments||[]).length>0 && (
                         <div className="mt-1 text-xs text-gray-600">Attachments: {(u.attachments||[]).map(f=> f.name).join(', ')}</div>
@@ -1347,6 +1657,21 @@ function InnerApp(props) {
         </Section>
       )}
 
+      {isManager && tab === "pending" && (
+        <Section title={`Pending approvals${pendingCount ? ` (${pendingCount})` : ""}`}>
+          <PendingApprovalsPanel
+            users={users}
+            schedules={data.schedules}
+            swaps={data.shift_swaps || []}
+            timeOffRequests={data.time_off_requests || []}
+            openShiftClaims={data.open_shift_claims || []}
+            onSetSwapStatus={setSwapStatus}
+            onSetTimeOffStatus={setTimeOffStatus}
+            onSetOpenShiftClaimStatus={setOpenShiftClaimStatus}
+          />
+        </Section>
+      )}
+
       {flags.swapsEnabled && tab === "swaps" && (
         <Section title="Shift swaps">
           <SwapPanel
@@ -1361,9 +1686,15 @@ function InnerApp(props) {
         </Section>
       )}
 
+      {tab === "profile" && (
+        <Section title="Profile">
+          <ProfilePanel currentUser={currentStateUser} canEditWage={isManager} onSave={saveProfile} />
+        </Section>
+      )}
+
       {!isManager && tab === "my" && (
         <Section
-          title={`My week • ${safeDate(weekStart).toLocaleDateString()}`}
+          title={`My Schedule • ${safeDate(weekStart).toLocaleDateString()}`}
           right={<Pill tone={schedule?.status === "published" ? "success" : "warn"}>{schedule ? schedule.status : "no schedule yet"}</Pill>}
         >
           <MyShifts
@@ -1371,7 +1702,16 @@ function InnerApp(props) {
             schedule={schedule}
             weekDays={weekDays}
             positionsById={positionsById}
+            locationName={data.locations.find((entry) => entry.id === locationId)?.name || "Main Location"}
+            positionColors={positionColors}
             onSwapRequest={(shift) => setSwapModal({ open: true, shift })}
+          />
+          <OpenShiftList
+            shifts={(schedule?.shifts || []).filter((shift) => !shift.user_id)}
+            positionsById={positionsById}
+            positionColors={positionColors}
+            claims={data.open_shift_claims || []}
+            onClaim={(shiftId) => createOpenShiftClaim(shiftId, currentUser.id)}
           />
           <TimeOffForm onSubmit={(vals) => createTimeOff({ user_id: currentUser.id, ...vals })} />
           {flags.unavailabilityEnabled && flags.employeeEditUnavailability && (
@@ -1526,7 +1866,25 @@ function InnerApp(props) {
 
 function TabBtn({ id, tab, setTab, label }) {
   return (
-    <button onClick={() => setTab(id)} className={`rounded-full px-4 py-1 text-sm ${tab === id ? "bg-brand text-brand-text" : "border border-brand-light bg-brand-lightest text-brand-dark hover:bg-brand-light"}`}>{label}</button>
+    <button onClick={() => setTab(id)} className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${tab === id ? "bg-white text-brand-darker shadow-sm" : "bg-white/10 text-white hover:bg-white/20"}`}>{label}</button>
+  );
+}
+
+function SummaryStat({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+      <div className="text-xs font-medium uppercase tracking-wide text-brand-text/60">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-brand-text">{value}</div>
+    </div>
+  );
+}
+
+function EmptyState({ icon, message }) {
+  return (
+    <div className="grid place-items-center gap-2 rounded-2xl border border-dashed border-brand-light bg-brand-lightest p-6 text-center text-sm text-brand-text/75">
+      <div className="text-2xl">{icon}</div>
+      <div>{message}</div>
+    </div>
   );
 }
 
@@ -1652,6 +2010,7 @@ function AddEmployeeForm({ onAdd }) {
   const [pronouns, setPronouns] = useState("");
   const [emName, setEmName] = useState("");
   const [emPhone, setEmPhone] = useState("");
+  const [wage, setWage] = useState("");
   const [notes, setNotes] = useState("");
   const [filesMeta, setFilesMeta] = useState([]);
 
@@ -1675,6 +2034,10 @@ function AddEmployeeForm({ onAdd }) {
         <TextInput label="Pronouns (optional)" value={pronouns} onChange={setPronouns} placeholder="she/her" />
         <TextInput label="Emergency contact name" value={emName} onChange={setEmName} placeholder="Contact name" />
         <TextInput label="Emergency contact phone" value={emPhone} onChange={setEmPhone} placeholder="555-0456" />
+        <label className="grid gap-1 text-sm">
+          <span className="text-gray-600">Hourly wage</span>
+          <input type="number" min="0" step="0.01" value={wage} onChange={(e)=>setWage(e.target.value)} className="rounded-xl border px-3 py-2"/>
+        </label>
         <label className="md:col-span-2 grid gap-1 text-sm">
           <span className="text-gray-600">Attachments {DEMO_MODE ? "(stored as metadata only in demo)" : "(metadata only for now)"}</span>
           <input type="file" multiple onChange={(e)=>onFiles(e.target.files)} className="rounded-xl border px-3 py-2" />
@@ -1685,7 +2048,7 @@ function AddEmployeeForm({ onAdd }) {
         </div>
       </div>
       <div className="mt-3 flex justify-end">
-        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => { if (!full_name.trim()) return alert("Enter a name"); onAdd({ full_name: full_name.trim(), email: email.trim(), role, phone, birthday, pronouns, emergency_contact: { name: emName, phone: emPhone }, attachments: filesMeta, notes }); setName(""); setEmail(""); setRole("employee"); setPhone(""); setBirthday(""); setPronouns(""); setEmName(""); setEmPhone(""); setFilesMeta([]); setNotes(""); }}>Add</button>
+        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white shadow-sm transition hover:bg-brand-darker" onClick={() => { if (!full_name.trim()) return alert("Enter a name"); onAdd({ full_name: full_name.trim(), email: email.trim(), role, phone, birthday, pronouns, emergency_contact: { name: emName, phone: emPhone }, attachments: filesMeta, notes, wage: wage === "" ? "" : Number(wage) }); setName(""); setEmail(""); setRole("employee"); setPhone(""); setBirthday(""); setPronouns(""); setEmName(""); setEmPhone(""); setWage(""); setFilesMeta([]); setNotes(""); }}>Add</button>
       </div>
     </div>
   );
@@ -1716,8 +2079,10 @@ function ShiftEditorModal({ open, onClose, users, positions, defaultUserId, defa
   const [notes, setNotes] = useState("");
   const [quickTaskTitle, setQuickTaskTitle] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [isOpenShift, setIsOpenShift] = useState(false);
 
   useEffect(() => {
+    setIsOpenShift(!defaultUserId);
     if (defaultUserId) setUserId(defaultUserId);
     if (defaultDay) setDay(defaultDay);
   }, [defaultUserId, defaultDay, open]);
@@ -1730,12 +2095,15 @@ function ShiftEditorModal({ open, onClose, users, positions, defaultUserId, defa
       footer={
         <>
           <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={onClose}>Cancel</button>
-          <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={() => { if (!userId || !positionId) return alert("Pick employee & position"); onCreate({ user_id: userId, position_id: positionId, day, start_hhmm: start, end_hhmm: end, break_min: breakMin, notes, quickTaskTitle, quickTaskTemplateId: templateId }); setQuickTaskTitle(""); setTemplateId(""); onClose(); }}>Save shift</button>
+          <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={() => { if (!isOpenShift && !userId) return alert("Pick an employee or mark this as open."); if (!positionId) return alert("Pick a position"); onCreate({ user_id: userId, position_id: positionId, day, start_hhmm: start, end_hhmm: end, break_min: breakMin, notes, quickTaskTitle, quickTaskTemplateId: templateId, is_open: isOpenShift }); setQuickTaskTitle(""); setTemplateId(""); setIsOpenShift(false); onClose(); }}>Save shift</button>
         </>
       }
     >
       <div className="grid gap-3 md:grid-cols-2">
-        <Select label="Employee" value={userId} onChange={setUserId} options={users.map((u) => ({ value: u.id, label: u.full_name }))} />
+        <div className="grid gap-2">
+          <Checkbox label="Create as open shift" checked={isOpenShift} onChange={setIsOpenShift} hint="Leave this unassigned so employees can claim it." />
+          {!isOpenShift && <Select label="Employee" value={userId} onChange={setUserId} options={users.map((u) => ({ value: u.id, label: u.full_name }))} />}
+        </div>
         <Select label="Position" value={positionId} onChange={setPositionId} options={positions.map((p) => ({ value: p.id, label: p.name }))} />
         <label className="grid gap-1 text-sm">
           <span className="text-gray-600">Day</span>
@@ -1759,7 +2127,7 @@ function ShiftEditorModal({ open, onClose, users, positions, defaultUserId, defa
         </label>
       </div>
 
-      {canQuickTask && (
+      {canQuickTask && !isOpenShift && (
         <div className="mt-4 rounded-xl border p-3">
           <div className="mb-2 text-sm font-semibold">Optional: create a task for this shift</div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -2132,36 +2500,268 @@ function SwapPanel({ currentUser, users, schedules, swaps, onRequest, onSetStatu
   );
 }
 
-function MyShifts({ currentUser, schedule, weekDays, positionsById, onSwapRequest }) {
-  const myShifts = (schedule?.shifts || []).filter((s) => s.user_id === currentUser.id);
-  const byDay = Object.fromEntries(weekDays.map((d) => [fmtDate(d), []]));
-  for (const s of myShifts) {
-    const k = fmtDate(s.starts_at);
-    if (!byDay[k]) byDay[k] = [];
-    byDay[k].push(s);
+function PendingApprovalsPanel({ users, schedules, swaps, timeOffRequests, openShiftClaims, onSetSwapStatus, onSetTimeOffStatus, onSetOpenShiftClaimStatus }) {
+  const byId = useMemo(() => Object.fromEntries(users.map((user) => [user.id, user])), [users]);
+  const shiftById = useMemo(() => {
+    const map = {};
+    for (const schedule of schedules || []) {
+      for (const shift of schedule.shifts || []) map[shift.id] = shift;
+    }
+    return map;
+  }, [schedules]);
+  const pendingSwaps = (swaps || []).filter((swap) => swap.status === "pending_manager");
+  const pendingTimeOff = (timeOffRequests || []).filter((request) => request.status === "pending");
+  const pendingClaims = (openShiftClaims || []).filter((claim) => claim.status === "pending");
+
+  if (!pendingSwaps.length && !pendingTimeOff.length && !pendingClaims.length) {
+    return <EmptyState icon="✅" message="Nothing is waiting on approval right now." />;
   }
+
   return (
-    <div className="grid gap-2 md:grid-cols-2">
-      {weekDays.map((d) => (
-        <div key={String(d)} className="rounded-2xl border p-3">
-          <div className="mb-1 text-sm font-semibold">{fmtDateLabel(d)}</div>
-          {(byDay[fmtDate(d)] || []).length === 0 ? (
-            <div className="text-sm text-gray-600">No shift.</div>
-          ) : (
-            <ul className="space-y-2">
-              {byDay[fmtDate(d)].map((s) => (
-                <li key={s.id} className="rounded-xl border px-3 py-2 text-sm">
-                  <div className="font-medium">{fmtTime(s.starts_at)} – {fmtTime(s.ends_at)}</div>
-                  <div className="text-xs text-gray-600">{positionsById[s.position_id]?.name || "—"} • Break: {s.break_min}m</div>
-                  {onSwapRequest && (
-                    <button className="mt-2 text-xs text-brand-dark underline" onClick={() => onSwapRequest(s)}>Request swap</button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+    <div className="space-y-6 text-sm">
+      <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+        <div className="mb-2 font-semibold">Shift swaps</div>
+        <ul className="divide-y">
+          {pendingSwaps.length === 0 && <li className="py-2 text-brand-text/70">No swap requests pending.</li>}
+          {pendingSwaps.map((swap) => (
+            <li key={swap.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div>
+                <div className="flex items-center gap-2 font-medium">
+                  <AvatarBadge name={byId[swap.from_user_id]?.full_name} className="h-7 w-7 text-xs" />
+                  {byId[swap.from_user_id]?.full_name || "Employee"} ⇄ {byId[swap.to_user_id]?.full_name || "Employee"}
+                </div>
+                <div className="text-xs text-brand-text/70">
+                  {shiftById[swap.from_shift_id] ? `${fmtDate(shiftById[swap.from_shift_id].starts_at)} ${fmtTime(shiftById[swap.from_shift_id].starts_at)}-${fmtTime(shiftById[swap.from_shift_id].ends_at)}` : "—"}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onSetSwapStatus(swap.id, "approved")}>Approve</button>
+                <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSetSwapStatus(swap.id, "denied")}>Deny</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+        <div className="mb-2 font-semibold">Time-off requests</div>
+        <ul className="divide-y">
+          {pendingTimeOff.length === 0 && <li className="py-2 text-brand-text/70">No time-off requests pending.</li>}
+          {pendingTimeOff.map((request) => (
+            <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div>
+                <div className="flex items-center gap-2 font-medium">
+                  <AvatarBadge name={byId[request.user_id]?.full_name} className="h-7 w-7 text-xs" />
+                  {byId[request.user_id]?.full_name || "Employee"}
+                </div>
+                <div className="text-xs text-brand-text/70">{request.date_from} → {request.date_to}{request.notes ? ` • ${request.notes}` : ""}</div>
+              </div>
+              <div className="flex gap-2">
+                <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onSetTimeOffStatus(request.id, "approved")}>Approve</button>
+                <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSetTimeOffStatus(request.id, "denied")}>Deny</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+        <div className="mb-2 font-semibold">Open shift claims</div>
+        <ul className="divide-y">
+          {pendingClaims.length === 0 && <li className="py-2 text-brand-text/70">No open shift claims pending.</li>}
+          {pendingClaims.map((claim) => {
+            const shift = shiftById[claim.shift_id];
+            return (
+              <li key={claim.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <AvatarBadge name={byId[claim.user_id]?.full_name} className="h-7 w-7 text-xs" />
+                    {byId[claim.user_id]?.full_name || "Employee"}
+                  </div>
+                  <div className="text-xs text-brand-text/70">
+                    {shift ? `${fmtDate(shift.starts_at)} • ${fmtTime(shift.starts_at)}-${fmtTime(shift.ends_at)}` : "Shift unavailable"}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onSetOpenShiftClaimStatus(claim.id, "approved")}>Approve</button>
+                  <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSetOpenShiftClaimStatus(claim.id, "denied")}>Deny</button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function ProfilePanel({ currentUser, canEditWage, onSave }) {
+  const [form, setForm] = useState(() => ({
+    full_name: currentUser.full_name || "",
+    phone: currentUser.phone || "",
+    pronouns: currentUser.pronouns || "",
+    birthday: currentUser.birthday || "",
+    emergency_name: currentUser.emergency_contact?.name || "",
+    emergency_phone: currentUser.emergency_contact?.phone || "",
+    email: currentUser.email || "",
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+    wage: currentUser.wage ?? "",
+  }));
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setForm({
+      full_name: currentUser.full_name || "",
+      phone: currentUser.phone || "",
+      pronouns: currentUser.pronouns || "",
+      birthday: currentUser.birthday || "",
+      emergency_name: currentUser.emergency_contact?.name || "",
+      emergency_phone: currentUser.emergency_contact?.phone || "",
+      email: currentUser.email || "",
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+      wage: currentUser.wage ?? "",
+    });
+  }, [currentUser]);
+
+  const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    setError("");
+    setStatus("");
+    if (form.new_password && form.new_password !== form.confirm_password) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+    try {
+      await onSave({
+        full_name: form.full_name,
+        phone: form.phone,
+        pronouns: form.pronouns,
+        birthday: form.birthday,
+        emergency_contact: { name: form.emergency_name, phone: form.emergency_phone },
+        email: form.email,
+        current_password: form.current_password,
+        new_password: form.new_password,
+        wage: canEditWage ? form.wage : currentUser.wage,
+      });
+      setForm((prev) => ({ ...prev, current_password: "", new_password: "", confirm_password: "" }));
+      setStatus("Profile saved.");
+    } catch (err) {
+      setError(err.message || "Unable to save profile.");
+    }
+  };
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="space-y-4 rounded-2xl border border-brand-light bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <AvatarBadge name={currentUser.full_name} className="h-10 w-10" />
+          <div>
+            <div className="text-lg font-semibold">{currentUser.full_name}</div>
+            <div className="text-sm text-brand-text/70">Role: {currentUser.role}</div>
+          </div>
         </div>
-      ))}
+        <TextInput label="Full name" value={form.full_name} onChange={(value) => setField("full_name", value)} />
+        <TextInput label="Phone" value={form.phone} onChange={(value) => setField("phone", value)} />
+        <TextInput label="Pronouns" value={form.pronouns} onChange={(value) => setField("pronouns", value)} />
+        <label className="grid gap-1 text-sm">
+          <span className="text-brand-text/75">Birthday</span>
+          <input type="date" value={form.birthday} onChange={(e) => setField("birthday", e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+        </label>
+        {canEditWage ? (
+          <label className="grid gap-1 text-sm">
+            <span className="text-brand-text/75">Hourly wage</span>
+            <input type="number" min="0" step="0.01" value={form.wage} onChange={(e) => setField("wage", e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+          </label>
+        ) : (
+          <div className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-text/70">Hourly wage is managed by your manager.</div>
+        )}
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-brand-light bg-white p-4 shadow-sm">
+        <div className="font-semibold">Emergency contact</div>
+        <TextInput label="Name" value={form.emergency_name} onChange={(value) => setField("emergency_name", value)} />
+        <TextInput label="Phone" value={form.emergency_phone} onChange={(value) => setField("emergency_phone", value)} />
+        <div className="pt-2 font-semibold">Account settings</div>
+        <TextInput label="Email" type="email" value={form.email} onChange={(value) => setField("email", value)} />
+        <TextInput label="Current password" type="password" value={form.current_password} onChange={(value) => setField("current_password", value)} />
+        <TextInput label="New password" type="password" value={form.new_password} onChange={(value) => setField("new_password", value)} />
+        <TextInput label="Confirm new password" type="password" value={form.confirm_password} onChange={(value) => setField("confirm_password", value)} />
+        {error && <div className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {status && <div className="rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{status}</div>}
+        <div className="flex justify-end">
+          <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={handleSave}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OpenShiftList({ shifts, positionsById, positionColors, claims, onClaim }) {
+  if (!shifts.length) return null;
+  const pendingShiftIds = new Set((claims || []).filter((claim) => claim.status === "pending").map((claim) => claim.shift_id));
+  return (
+    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-3 shadow-sm">
+      <div className="mb-2 font-semibold">Open shifts</div>
+      <ul className="space-y-2">
+        {shifts.map((shift) => {
+          const tone = positionColors?.[shift.position_id] || POSITION_COLOR_PALETTE[0];
+          return (
+            <li key={shift.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-light border-l-4 ${tone.border} ${tone.bg} px-3 py-2 text-sm`}>
+              <div>
+                <div className="font-medium">{fmtDateLabel(shift.starts_at)} • {fmtTime(shift.starts_at)} - {fmtTime(shift.ends_at)}</div>
+                <div className="text-xs text-brand-text/70">{positionsById[shift.position_id]?.name || "Open role"}</div>
+              </div>
+              {pendingShiftIds.has(shift.id) ? (
+                <Pill tone="warn">Pending</Pill>
+              ) : (
+                <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-darker" onClick={() => onClaim(shift.id)}>
+                  Claim
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function MyShifts({ currentUser, schedule, weekDays, positionsById, locationName, positionColors, onSwapRequest }) {
+  const myShifts = (schedule?.shifts || []).filter((s) => s.user_id === currentUser.id);
+  const ordered = [...myShifts].sort((a, b) => safeDate(a.starts_at) - safeDate(b.starts_at));
+  return (
+    <div className="rounded-2xl border border-brand-light bg-white shadow-sm">
+      {ordered.length === 0 ? (
+        <EmptyState icon="📭" message="No shifts scheduled for you this week." />
+      ) : (
+        <ul className="divide-y divide-brand-light">
+          {ordered.map((shift) => {
+            const tone = positionColors?.[shift.position_id] || POSITION_COLOR_PALETTE[0];
+            return (
+              <li key={shift.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-4 ${tone.border} ${tone.bg} px-4 py-3 text-sm`}>
+                <div className="flex items-center gap-3">
+                  <AvatarBadge name={currentUser.full_name} className="h-8 w-8 text-xs" />
+                  <div>
+                    <div className="font-semibold">{fmtDateLabel(shift.starts_at)} • {fmtTime(shift.starts_at)} - {fmtTime(shift.ends_at)}</div>
+                    <div className="text-xs text-brand-text/70">{positionsById[shift.position_id]?.name || "—"} • {locationName} • Break: {shift.break_min}m</div>
+                  </div>
+                </div>
+                {onSwapRequest && (
+                  <button className="rounded-xl border border-brand bg-white px-3 py-2 text-xs font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => onSwapRequest(shift)}>
+                    Swap
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -2170,26 +2770,36 @@ function TimeOffForm({ onSubmit }) {
   const [from, setFrom] = useState(fmtDate(new Date()));
   const [to, setTo] = useState(fmtDate(new Date()));
   const [notes, setNotes] = useState("");
+  const [expanded, setExpanded] = useState(false);
   return (
-    <div className="mt-4 rounded-2xl border p-3">
-      <h4 className="mb-2 font-semibold">Request time off</h4>
-      <div className="grid gap-3 md:grid-cols-3">
-        <label className="grid gap-1 text-sm">
-          <span className="text-gray-600">From</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border px-3 py-2" />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-gray-600">To</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border px-3 py-2" />
-        </label>
-        <label className="grid gap-1 text-sm md:col-span-1">
-          <span className="text-gray-600">Notes</span>
-          <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl border px-3 py-2" />
-        </label>
+    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-3 text-sm shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="font-semibold">Request time off</h4>
+        <button className="rounded-xl border border-brand bg-white px-3 py-1.5 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? "Close" : "Add"}
+        </button>
       </div>
-      <div className="mt-3 flex justify-end">
-        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={() => onSubmit({ date_from: from, date_to: to, notes })}>Submit</button>
-      </div>
+      {expanded && (
+        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_2fr_auto]">
+          <label className="grid gap-1 text-sm">
+            <span className="text-brand-text/75">From</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-brand-text/75">To</span>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-brand-text/75">Notes</span>
+            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" />
+          </label>
+          <div className="flex items-end justify-end">
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={() => { onSubmit({ date_from: from, date_to: to, notes }); setExpanded(false); }}>
+              Submit
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2200,6 +2810,7 @@ function MyUnavailabilityEditor({ currentUser, list, onAdd, onUpdate, onDelete }
   const [end, setEnd] = useState('17:00');
   const [notes, setNotes] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [expanded, setExpanded] = useState(false);
 
   const mine = useMemo(() => (list || []).filter(ua => ua.user_id === currentUser.id && ua.kind === 'weekly'), [list, currentUser?.id]);
 
@@ -2211,23 +2822,31 @@ function MyUnavailabilityEditor({ currentUser, list, onAdd, onUpdate, onDelete }
       onAdd({ user_id: currentUser.id, kind: 'weekly', weekday: Number(weekday), start_hhmm: start, end_hhmm: end, notes });
     }
     setNotes('');
+    setExpanded(false);
   };
 
-  const beginEdit = (ua) => { setEditingId(ua.id); setWeekday(Number(ua.weekday)); setStart(ua.start_hhmm); setEnd(ua.end_hhmm); setNotes(ua.notes || ''); };
+  const beginEdit = (ua) => { setEditingId(ua.id); setWeekday(Number(ua.weekday)); setStart(ua.start_hhmm); setEnd(ua.end_hhmm); setNotes(ua.notes || ''); setExpanded(true); };
 
   return (
-    <div className="mt-4 rounded-2xl border p-3">
-      <h4 className="mb-2 font-semibold">My weekly unavailability</h4>
-      <div className="grid gap-3 md:grid-cols-3">
-        <Select label="Weekday" value={weekday} onChange={(v)=>setWeekday(Number(v))} options={WEEK_LABELS.map((w,i)=>({value:i,label:w}))} />
-        <label className="grid gap-1 text-sm"><span className="text-gray-600">Start</span><input type="time" value={start} onChange={(e)=>setStart(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
-        <label className="grid gap-1 text-sm"><span className="text-gray-600">End</span><input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} className="rounded-xl border px-3 py-2"/></label>
-        <div className="md:col-span-3"><TextInput label="Notes (optional)" value={notes} onChange={setNotes} placeholder="Class, commute, etc." /></div>
+    <div className="mt-4 rounded-2xl border border-brand-light bg-white p-3 text-sm shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="font-semibold">My weekly unavailability</h4>
+        <button className="rounded-xl border border-brand bg-white px-3 py-1.5 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={() => { setExpanded((v) => !v); if (expanded) setEditingId(null); }}>
+          {expanded ? "Close" : "Add"}
+        </button>
       </div>
-      <div className="mt-3 flex justify-end gap-2">
-        {editingId && <button className="rounded-xl border border-brand-light bg-brand-lightest px-3 py-2 text-sm text-brand-dark transition hover:bg-brand-light" onClick={()=>{ setEditingId(null); setNotes(''); }}>Cancel</button>}
-        <button className="rounded-xl border border-brand-dark bg-brand-dark px-3 py-2 text-sm text-white transition hover:bg-brand-darker" onClick={save}>{editingId ? 'Save' : 'Add'}</button>
-      </div>
+      {expanded && (
+        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_1fr_2fr_auto]">
+          <Select label="Weekday" value={weekday} onChange={(v)=>setWeekday(Number(v))} options={WEEK_LABELS.map((w,i)=>({value:i,label:w}))} />
+          <label className="grid gap-1 text-sm"><span className="text-brand-text/75">Start</span><input type="time" value={start} onChange={(e)=>setStart(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm"/></label>
+          <label className="grid gap-1 text-sm"><span className="text-brand-text/75">End</span><input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm"/></label>
+          <label className="grid gap-1 text-sm"><span className="text-brand-text/75">Notes</span><input type="text" value={notes} onChange={(e)=>setNotes(e.target.value)} className="rounded-xl border border-brand-light px-3 py-2 text-sm" /></label>
+          <div className="flex items-end justify-end gap-2">
+            {editingId && <button className="rounded-xl border border-brand bg-white px-3 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-lightest" onClick={()=>{ setEditingId(null); setNotes(''); setExpanded(false); }}>Cancel</button>}
+            <button className="rounded-xl border border-brand-dark bg-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-darker" onClick={save}>{editingId ? 'Save' : 'Add'}</button>
+          </div>
+        </div>
+      )}
       <div className="mt-3">
         <ul className="divide-y rounded-2xl border">
           {mine.length === 0 && <li className="p-3 text-sm text-gray-600">No weekly unavailability yet.</li>}

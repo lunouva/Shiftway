@@ -8,3 +8,20 @@
     color: #0F3D52;
   }
 }
+
+@media print {
+  body {
+    background: white;
+    color: #0F3D52;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-schedule-area {
+    border: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+}

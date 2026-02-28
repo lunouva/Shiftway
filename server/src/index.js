@@ -200,6 +200,7 @@ const seedState = ({ locationId, ownerUser }) => ({
       emergency_contact: { name: "", phone: "" },
       attachments: [],
       notes: "",
+      wage: "",
     },
   ],
   schedules: [],
@@ -210,6 +211,7 @@ const seedState = ({ locationId, ownerUser }) => ({
   task_templates: [],
   messages: [],
   shift_swaps: [],
+  open_shift_claims: [],
   notification_settings: { email: true, sms: false, push: false },
   feature_flags: defaultFlags(),
 });
@@ -271,6 +273,7 @@ const emptyOrgState = () => ({
   task_templates: [],
   messages: [],
   shift_swaps: [],
+  open_shift_claims: [],
   notification_settings: { email: true, sms: false, push: false },
   feature_flags: defaultFlags(),
 });
@@ -404,6 +407,86 @@ app.get("/api/auth/google/callback", (req, res, next) => {
 
 app.get("/api/me", auth, async (req, res) => {
   res.json({ user: sanitizeUser(req.user) });
+});
+
+app.patch("/api/me", auth, async (req, res) => {
+  const {
+    full_name,
+    phone,
+    pronouns,
+    birthday,
+    emergency_contact,
+    email,
+    current_password,
+    new_password,
+    wage,
+  } = req.body || {};
+
+  const trimmedName = String(full_name || "").trim();
+  const normalizedEmail = String(email || req.user.email || "").trim().toLowerCase();
+  const nextPhone = String(phone || "").trim();
+  const nextPronouns = String(pronouns || "").trim();
+  const nextBirthday = String(birthday || "").trim();
+  const nextEmergency = {
+    name: String(emergency_contact?.name || "").trim(),
+    phone: String(emergency_contact?.phone || "").trim(),
+  };
+  const nextWage = wage === "" || wage == null ? "" : Number(wage);
+  const wantsCredentialChange = normalizedEmail !== String(req.user.email || "").toLowerCase() || String(new_password || "").length > 0;
+
+  if (!trimmedName) return res.status(400).json({ error: "missing_fields" });
+  if (wantsCredentialChange && !current_password) return res.status(400).json({ error: "missing_fields" });
+
+  if (wantsCredentialChange) {
+    const ok = req.user.password_hash ? await bcrypt.compare(String(current_password), req.user.password_hash) : false;
+    if (!ok) return res.status(400).json({ error: "invalid_password" });
+    if (normalizedEmail !== String(req.user.email || "").toLowerCase()) {
+      const existing = await query("SELECT id FROM users WHERE email = $1 AND id <> $2", [normalizedEmail, req.user.id]);
+      if (existing.rows[0]) return res.status(400).json({ error: "email_in_use" });
+    }
+  }
+
+  const nextPasswordHash = String(new_password || "").trim()
+    ? await bcrypt.hash(String(new_password), 10)
+    : req.user.password_hash;
+
+  const userRes = await query(
+    "UPDATE users SET full_name = $1, email = $2, password_hash = $3 WHERE id = $4 RETURNING *",
+    [trimmedName, normalizedEmail, nextPasswordHash, req.user.id]
+  );
+  const updatedUser = userRes.rows[0];
+
+  const stateRes = await query("SELECT data FROM org_state WHERE org_id = $1", [req.user.org_id]);
+  const state = stateRes.rows[0]?.data || emptyOrgState();
+  const nextUsers = Array.isArray(state.users) ? [...state.users] : [];
+  const userIndex = nextUsers.findIndex((user) => user.id === req.user.id);
+  const previousStateUser = userIndex >= 0 ? nextUsers[userIndex] : {};
+  const mergedStateUser = {
+    ...previousStateUser,
+    id: req.user.id,
+    location_id: req.user.location_id,
+    full_name: trimmedName,
+    email: normalizedEmail,
+    role: req.user.role,
+    is_active: req.user.is_active,
+    phone: nextPhone,
+    birthday: nextBirthday,
+    pronouns: nextPronouns,
+    emergency_contact: nextEmergency,
+    attachments: Array.isArray(previousStateUser.attachments) ? previousStateUser.attachments : [],
+    notes: String(previousStateUser.notes || ""),
+    wage: nextWage,
+  };
+  if (userIndex >= 0) nextUsers[userIndex] = mergedStateUser;
+  else nextUsers.push(mergedStateUser);
+
+  const nextState = { ...emptyOrgState(), ...state, users: nextUsers };
+  await query(
+    "INSERT INTO org_state (org_id, data, updated_at) VALUES ($1,$2,now()) ON CONFLICT (org_id) DO UPDATE SET data = $2, updated_at = now()",
+    [req.user.org_id, nextState]
+  );
+
+  res.json({ ok: true, user: sanitizeUser(updatedUser) });
 });
 
 app.get("/api/state", auth, async (req, res) => {
@@ -601,6 +684,7 @@ app.post("/api/invite/accept", async (req, res) => {
       emergency_contact: { name: "", phone: "" },
       attachments: [],
       notes: "",
+      wage: "",
     });
     const nextState = { ...emptyOrgState(), ...state, users: nextUsers };
 
