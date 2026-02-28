@@ -859,9 +859,9 @@ function WeekGrid({
         ))}
       </div>
 
-      <div className="hidden md:block">
-        <div className="w-full rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
-          <div className="grid grid-cols-[160px_repeat(7,1fr)_60px]">
+      <div className="hidden md:block overflow-hidden">
+        <div className="w-full overflow-hidden rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
+          <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))_56px]">
             <div className="sticky left-0 z-20 rounded-tl-[1.5rem] bg-white px-4 py-4 text-sm font-bold text-brand-text">Team</div>
             {weekDays.map((d, index) => {
               const dayKey = fmtDate(d);
