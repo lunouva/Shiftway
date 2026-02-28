@@ -2072,7 +2072,20 @@ const NUGGETS = [
 ];
 
 function DailyNugget() {
-  const nugget = React.useMemo(() => NUGGETS[Math.floor(Math.random() * NUGGETS.length)], []);
+  const nugget = React.useMemo(() => {
+    const STORAGE_KEY = "shiftway_nugget_idx";
+    const seenKey = "shiftway_nugget_seen";
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem(seenKey) || "[]"); } catch {}
+    // Reset if all seen
+    if (seen.length >= NUGGETS.length) seen = [];
+    // Pick one not yet seen
+    const remaining = NUGGETS.map((_, i) => i).filter(i => !seen.includes(i));
+    const pick = remaining[Math.floor(Math.random() * remaining.length)];
+    seen.push(pick);
+    try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch {}
+    return NUGGETS[pick];
+  }, []);
   return <div className="mt-2 text-xs text-brand-dark/60 italic">{nugget}</div>;
 }
 
