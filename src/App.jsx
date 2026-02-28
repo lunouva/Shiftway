@@ -860,7 +860,7 @@ function WeekGrid({
       </div>
 
       <div className="hidden md:block overflow-hidden">
-        <div className="w-full overflow-hidden rounded-[1.5rem] border border-brand-light bg-white shadow-sm">
+        <div className="w-full overflow-hidden rounded-b-[1.75rem]">
           <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))_56px]">
             <div className="sticky left-0 z-20 rounded-tl-[1.5rem] bg-white px-4 py-4 text-sm font-bold text-brand-text">Team</div>
             {weekDays.map((d, index) => {
@@ -1847,7 +1847,7 @@ function InnerApp(props) {
           {scopedUsers.length === 0 ? (
             <EmptyState icon="🗓" message="Add employees first so you can start building the schedule." />
           ) : (
-            <div className="print-schedule-area rounded-2xl border border-brand-light bg-white p-3">
+            <div className="print-schedule-area -mx-6 -mb-6">
               <WeekGrid
                 employees={scopedUsers}
                 weekDays={weekDays}
