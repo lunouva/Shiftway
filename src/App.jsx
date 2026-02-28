@@ -1682,7 +1682,7 @@ function InnerApp(props) {
 
   return (
     <div className="min-h-screen bg-brand-lightest text-brand-text">
-      <aside className="print-hidden fixed inset-y-0 left-0 z-40 hidden w-[220px] flex-col rounded-r-[2rem] bg-brand-darker px-4 py-5 text-white shadow-2xl md:flex">
+      <aside className="print-hidden group/sidebar fixed inset-y-0 left-0 z-40 hidden w-[64px] flex-col rounded-r-[2rem] bg-brand-darker py-5 text-white shadow-2xl transition-all duration-200 hover:w-[200px] md:flex">
         <div className="mb-6 flex items-center gap-3 px-2">
           <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15 text-lg">✦</div>
           <div>
@@ -1756,7 +1756,7 @@ function InnerApp(props) {
         onLogout={logout}
       />
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-4 pb-24 md:ml-[220px] md:px-6 md:py-6 md:pb-6">
+      <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-4 pb-24 md:ml-[64px] md:px-6 md:py-6 md:pb-6">
         <header className="print-hidden rounded-[1.75rem] border border-brand-light bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -2522,10 +2522,25 @@ function DailyNugget() {
 }
 
 function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
+  const isActive = tab === id;
+  if (vertical) {
+    return (
+      <button
+        onClick={() => setTab(id)}
+        title={label}
+        className={`relative flex w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${isActive ? "bg-white/20 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+      >
+        {icon ? <span className="shrink-0 text-lg">{icon}</span> : null}
+        <span className="truncate opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">{label}</span>
+        {badge ? <span className="ml-auto shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-brand-darker opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">{badge}</span> : null}
+        {isActive && <span className="absolute right-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-l-full bg-white" />}
+      </button>
+    );
+  }
   return (
     <button
       onClick={() => setTab(id)}
-      className={`w-full transition ${vertical ? `flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm font-medium ${tab === id ? "bg-white/20 text-white" : "text-white/85 hover:bg-white/10"}` : `rounded-2xl px-4 py-2 text-sm font-medium ${tab === id ? "bg-white text-brand-darker shadow-sm" : "bg-white/10 text-white hover:bg-white/20"}`}`}
+      className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${isActive ? "bg-white text-brand-darker shadow-sm" : "bg-white/10 text-white hover:bg-white/20"}`}
     >
       <span className="flex items-center gap-3">
         {icon ? <span className="text-base">{icon}</span> : null}
