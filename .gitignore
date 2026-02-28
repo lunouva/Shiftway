@@ -19,3 +19,6 @@ yarn-error.log*
 
 # Clawdbot
 .learnings/
+
+# Local Netlify folder
+.netlify
