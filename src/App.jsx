@@ -2053,39 +2053,25 @@ function InnerApp(props) {
 }
 
 
-const NUGGETS = [
-  "🐙 Octopuses have three hearts — two pump blood to the gills, one to the body. Basically overachievers.",
-  "☕ The average person spends 6 months of their life waiting for coffee to brew. Make it count.",
-  "🐝 A bee visits 2 million flowers to make one pound of honey. Your schedule is easier than that.",
-  "🦈 Sharks are older than trees. Trees are ~350M years old. Sharks: ~450M. Let that sink in.",
-  "🍕 The world's first pizza delivery was made in 1889 — to the Queen of Italy. Standards were high.",
-  "🦴 Humans share 50% of their DNA with bananas. So technically half your team is a fruit.",
-  "🐦 A group of flamingos is called a flamboyance. Your team deserves a name that cool.",
-  "🌙 A day on Venus is longer than a year on Venus. At least your shifts have a set end time.",
-  "🐳 Blue whales have hearts the size of a small car. Yours is probably bigger after a good shift.",
-  "🧠 Your brain generates enough electricity while awake to power a small lightbulb. Use it wisely.",
-  "🦴 The strongest muscle in the body relative to size is the jaw. Useful for coffee.",
-  "🌍 There are more trees on Earth than stars in the Milky Way. Your schedule matters more though.",
-  "🐜 Ants never sleep. Neither does a busy manager. But please — sleep.",
-  "💡 Edison filed 1,093 patents. He also napped constantly. Coincidence? Probably not.",
-  "🦴 Wombat poop is cube-shaped. Nobody asked, but now you know.",
-];
-
 function DailyNugget() {
-  const nugget = React.useMemo(() => {
-    const STORAGE_KEY = "shiftway_nugget_idx";
-    const seenKey = "shiftway_nugget_seen";
-    let seen = [];
-    try { seen = JSON.parse(localStorage.getItem(seenKey) || "[]"); } catch {}
-    // Reset if all seen
-    if (seen.length >= NUGGETS.length) seen = [];
-    // Pick one not yet seen
-    const remaining = NUGGETS.map((_, i) => i).filter(i => !seen.includes(i));
-    const pick = remaining[Math.floor(Math.random() * remaining.length)];
-    seen.push(pick);
-    try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch {}
-    return NUGGETS[pick];
+  const [nugget, setNugget] = React.useState("");
+  React.useEffect(() => {
+    fetch("/nuggets.json")
+      .then((r) => r.json())
+      .then((list) => {
+        const seenKey = "shiftway_nugget_seen";
+        let seen = [];
+        try { seen = JSON.parse(localStorage.getItem(seenKey) || "[]"); } catch {}
+        if (seen.length >= list.length) seen = [];
+        const remaining = list.map((_, i) => i).filter((i) => !seen.includes(i));
+        const pick = remaining[Math.floor(Math.random() * remaining.length)];
+        seen.push(pick);
+        try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch {}
+        setNugget(list[pick] || "");
+      })
+      .catch(() => setNugget("🌍 The world is full of surprises. So is this schedule."));
   }, []);
+  if (!nugget) return null;
   return <div className="mt-2 text-xs text-brand-dark/60 italic">{nugget}</div>;
 }
 
