@@ -1,4 +1,17 @@
 import React, { useEffect, useMemo, useState, createContext, useContext } from "react";
+import {
+  ScheduleIcon,
+  EmployeesIcon,
+  PendingIcon,
+  TasksIcon,
+  MessagesIcon,
+  FeedIcon,
+  SwapsIcon,
+  LockIcon,
+  SettingsIcon,
+  ProfileIcon,
+  InfoIcon,
+} from "./components/Icons";
 
 /* tailwind-safelist: bg-brand bg-brand-dark bg-brand-darker bg-brand-light bg-brand-lightest text-brand-dark text-brand-darker text-brand-text border-brand border-brand-dark border-brand-light */
 
@@ -439,10 +452,11 @@ function Section({ title, right, children, flush = false }) {
   );
 }
 
-function Pill({ children, tone = "default" }) {
+function Pill({ children, tone = "default", pulse = false }) {
   const toneCls = tone === "success" ? "text-green-700" : tone === "warn" ? "text-amber-700" : tone === "danger" ? "text-red-700" : "text-gray-700";
   const bgCls = tone === "success" ? "bg-green-50 border-green-300" : tone === "warn" ? "bg-amber-50 border-amber-300" : tone === "danger" ? "bg-red-50 border-red-300" : "bg-gray-50 border-gray-300";
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${bgCls} ${toneCls}`}>{children}</span>;
+  const pulseCls = pulse ? "motion-safe:animate-pulse" : "";
+  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs transition-colors ${bgCls} ${toneCls} ${pulseCls}`}>{children}</span>;
 }
 
 function ProBadge({ className = "" }) {
@@ -603,25 +617,25 @@ function ProUpsellModal({ feature, onClose }) {
 }
 
 const MANAGER_NAV = [
-  { id: "schedule", label: "Schedule", icon: "📅" },
-  { id: "employees", label: "Employees", icon: "👥" },
-  { id: "pending", label: "Pending", icon: "⏳", badgeKey: "pending" },
-  { id: "tasks", label: "Tasks", icon: "📋", flag: "tasksEnabled" },
-  { id: "messages", label: "Messages", icon: "💬", flag: "messagesEnabled" },
-  { id: "feed", label: "Feed", icon: "📰", flag: "newsfeedEnabled" },
-  { id: "swaps", label: "Swaps", icon: "🔄", flag: "swapsEnabled" },
-  { id: "availability", label: "Unavailability", icon: "🔒", flag: "unavailabilityEnabled" },
-  { id: "settings", label: "Settings", icon: "⚙️" },
-  { id: "profile", label: "Profile", icon: "👤" },
+  { id: "schedule", label: "Schedule", icon: ScheduleIcon },
+  { id: "employees", label: "Employees", icon: EmployeesIcon },
+  { id: "pending", label: "Pending", icon: PendingIcon, badgeKey: "pending" },
+  { id: "tasks", label: "Tasks", icon: TasksIcon, flag: "tasksEnabled" },
+  { id: "messages", label: "Messages", icon: MessagesIcon, flag: "messagesEnabled" },
+  { id: "feed", label: "Feed", icon: FeedIcon, flag: "newsfeedEnabled" },
+  { id: "swaps", label: "Swaps", icon: SwapsIcon, flag: "swapsEnabled" },
+  { id: "availability", label: "Unavailability", icon: LockIcon, flag: "unavailabilityEnabled" },
+  { id: "settings", label: "Settings", icon: SettingsIcon },
+  { id: "profile", label: "Profile", icon: ProfileIcon },
 ];
 
 const EMPLOYEE_NAV = [
-  { id: "my", label: "Schedule", icon: "📅" },
-  { id: "tasks", label: "Tasks", icon: "📋", flag: "tasksEnabled" },
-  { id: "messages", label: "Messages", icon: "💬", flag: "messagesEnabled" },
-  { id: "feed", label: "Feed", icon: "📰", flag: "newsfeedEnabled" },
-  { id: "swaps", label: "Swaps", icon: "🔄", flag: "swapsEnabled" },
-  { id: "profile", label: "Profile", icon: "👤" },
+  { id: "my", label: "Schedule", icon: ScheduleIcon },
+  { id: "tasks", label: "Tasks", icon: TasksIcon, flag: "tasksEnabled" },
+  { id: "messages", label: "Messages", icon: MessagesIcon, flag: "messagesEnabled" },
+  { id: "feed", label: "Feed", icon: FeedIcon, flag: "newsfeedEnabled" },
+  { id: "swaps", label: "Swaps", icon: SwapsIcon, flag: "swapsEnabled" },
+  { id: "profile", label: "Profile", icon: ProfileIcon },
 ];
 
 // ---------- auth ----------
@@ -786,6 +800,14 @@ function WeekGrid({
     employeeShiftMap[shift.user_id][key].push(shift);
   }
 
+  const [compactMode, setCompactMode] = React.useState(false);
+  const dayColumnTemplate = compactMode ? "minmax(0, min(110px, 1fr))" : "minmax(0, 1fr)";
+  const gridTemplate = `140px repeat(7,${dayColumnTemplate}) 56px`;
+  const dayHeadPadding = compactMode ? "py-3" : "py-4";
+  const openRowPadding = compactMode ? "p-2" : "p-3";
+  const cellPadding = compactMode ? "p-1.5" : "p-2";
+  const sectionHeaderPadding = compactMode ? "py-2.5" : "py-3";
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:hidden">
@@ -857,6 +879,18 @@ function WeekGrid({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="hidden items-center justify-between gap-3 px-3 text-xs font-semibold uppercase tracking-[0.22em] text-brand-dark/60 md:flex">
+        <span>Desktop schedule board</span>
+        <button
+          type="button"
+          className="rounded-full border border-brand-light px-3 py-1 text-[11px] font-semibold text-brand-dark/80 transition hover:border-brand"
+          onClick={() => setCompactMode((value) => !value)}
+          aria-pressed={compactMode}
+        >
+          Compact view {compactMode ? "On" : "Off"}
+        </button>
       </div>
 
       <div className="hidden md:block overflow-hidden">
@@ -997,6 +1031,8 @@ export default function App() {
   const [tab, setTab] = useState("schedule");
   const [locationId, setLocationId] = useState("loc1");
 
+  const [statusPulse, setStatusPulse] = useState(false);
+
   const defaultWeekStart = fmtDate(startOfWeek(today(), 1));
   const [weekStart, setWeekStart] = useState(defaultWeekStart);
 
@@ -1032,6 +1068,12 @@ export default function App() {
   }, []);
 
   const schedule = useMemo(() => data.schedules.find((s) => s.location_id === location.id && s.week_start === weekStart), [data.schedules, location.id, weekStart]);
+  useEffect(() => {
+    if (!schedule?.status) return undefined;
+    setStatusPulse(true);
+    const timer = setTimeout(() => setStatusPulse(false), 1200);
+    return () => clearTimeout(timer);
+  }, [schedule?.status]);
   const weekDays = useMemo(() => {
     const start = safeDate(weekStart);
     return Array.from({ length: 7 }, (_, i) => {
@@ -1821,7 +1863,7 @@ function InnerApp(props) {
           title={`Week of ${safeDate(weekStart).toLocaleDateString()}`}
           right={
             schedule ? (
-              <Pill>
+              <Pill pulse={statusPulse}>
                 Status: <span className={`ml-1 font-semibold ${schedule.status === "published" ? "text-green-700" : "text-amber-700"}`}>{schedule.status}</span>
               </Pill>
             ) : (
@@ -1830,10 +1872,10 @@ function InnerApp(props) {
           }
         >
           <div className="mb-4 grid gap-3 px-6 pt-6 md:grid-cols-4">
-            <SummaryStat label="Total shifts" value={(schedule?.shifts || []).length} />
-            <SummaryStat label="Scheduled hours" value={`${totalScheduledHours.toFixed(2)} h`} />
-            <SummaryStat label={<span>Estimated labor cost<ProBadge /></span>} value={formatCurrency(totalLaborCost)} onClick={() => openProUpsell("laborCost")} />
-            <SummaryStat label="Open shifts" value={openShifts.length} />
+            <SummaryStat hint="Count of scheduled shifts for this location and week." label="Total shifts" value={(schedule?.shifts || []).length} />
+            <SummaryStat hint="Sum of all scheduled hours (breaks already excluded)." label="Scheduled hours" value={`${totalScheduledHours.toFixed(2)} h`} />
+            <SummaryStat hint="Hourly wages × planned hours. Tap for payroll-ready insights." label={<span>Estimated labor cost<ProBadge /></span>} value={formatCurrency(totalLaborCost)} onClick={() => openProUpsell("laborCost")} />
+            <SummaryStat hint="Shifts still waiting for someone to claim them." label="Open shifts" value={openShifts.length} />
           </div>
 
           <div className="mb-4 mx-6 flex flex-wrap gap-2 rounded-2xl border border-brand-light bg-brand-lightest p-3 text-sm">
@@ -2524,6 +2566,8 @@ function DailyNugget() {
 
 function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
   const isActive = tab === id;
+  const IconComponent = typeof icon === "function" ? icon : null;
+  const iconElement = IconComponent ? <IconComponent className="h-5 w-5" /> : icon ? <span className="text-xl">{icon}</span> : null;
   if (vertical) {
     return (
       <button
@@ -2531,7 +2575,7 @@ function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
         title={label}
         className={`group/btn relative flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-medium transition-all duration-150 ${isActive ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
       >
-        {icon ? <span className="text-xl">{icon}</span> : <span className="text-xs font-bold">{label.slice(0,2)}</span>}
+        {iconElement || <span className="text-xs font-bold">{label.slice(0, 2)}</span>}
         {badge ? <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-white">{badge}</span> : null}
         {isActive && <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-white" />}
         <span className="pointer-events-none absolute left-[110%] z-50 hidden whitespace-nowrap rounded-lg bg-brand-text px-2 py-1 text-xs font-medium text-white shadow-lg group-hover/btn:block">{label}</span>
@@ -2544,18 +2588,29 @@ function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
       className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${isActive ? "bg-white text-brand-darker shadow-sm" : "bg-white/10 text-white hover:bg-white/20"}`}
     >
       <span className="flex items-center gap-3">
-        {icon ? <span className="text-base">{icon}</span> : null}
+        {iconElement ? <span className="text-brand-darker">{iconElement}</span> : null}
         <span>{label}</span>
       </span>
       {badge ? <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-brand-darker">{badge}</span> : null}
     </button>
   );
 }
-
-function SummaryStat({ label, value, onClick }) {
+function SummaryStat({ label, value, onClick, hint }) {
+  const labelContent = (
+    <div className="text-xs font-medium uppercase tracking-wide text-brand-text/60">
+      <span className="flex items-center gap-1">
+        <span>{label}</span>
+        {hint && (
+          <span title={hint} className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-light text-brand-text/60">
+            <InfoIcon className="h-3 w-3" />
+          </span>
+        )}
+      </span>
+    </div>
+  );
   const content = (
     <>
-      <div className="text-xs font-medium uppercase tracking-wide text-brand-text/60">{label}</div>
+      {labelContent}
       <div className="mt-1 text-lg font-semibold text-brand-text">{value}</div>
     </>
   );
@@ -2574,7 +2629,6 @@ function SummaryStat({ label, value, onClick }) {
 
   return <div className="rounded-[1.5rem] border border-brand-light bg-white p-4 shadow-sm">{content}</div>;
 }
-
 function EmptyState({ icon, message, heading, actionLabel, onAction }) {
   return (
     <div className="grid place-items-center gap-3 rounded-[1.75rem] border border-dashed border-brand-light bg-brand-lightest p-8 text-center">
