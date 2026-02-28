@@ -480,7 +480,7 @@ function AuthProvider({ children, data, setData, backendMode, clientSettings, on
         setCurrentUser(null);
         onAuthChange?.(null);
       });
-  }, [backendMode, clientSettings, currentUserId, data.users, onAuthChange]);
+  }, [backendMode, clientSettings, currentUserId, onAuthChange]);
 
   const login = async (email, password) => {
     if (!backendMode) {
@@ -705,7 +705,7 @@ export default function App() {
       setHydrated(false);
       return;
     }
-    setLoading(true);
+    if (!hydrated) setLoading(true);
     setApiError(null);
     apiFetch("/api/state", { token }, clientSettings)
       .then((res) => {
