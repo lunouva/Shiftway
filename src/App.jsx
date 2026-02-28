@@ -1585,6 +1585,7 @@ function InnerApp(props) {
               <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-dark/70">{isManager ? "Schedule Hub" : "Personal Schedule"}</div>
               <h1 className="text-3xl font-black text-brand-text">{isManager ? "Build the week with confidence" : "Your week at a glance"}</h1>
               <div className="mt-1 text-sm text-brand-dark">Friendly scheduling for {data.locations.find((entry) => entry.id === locationId)?.name || "your team"}.</div>
+              <DailyNugget />
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="grid gap-1.5 text-sm">
@@ -2049,6 +2050,30 @@ function InnerApp(props) {
       </nav>
     </div>
   );
+}
+
+
+const NUGGETS = [
+  "🐙 Octopuses have three hearts — two pump blood to the gills, one to the body. Basically overachievers.",
+  "☕ The average person spends 6 months of their life waiting for coffee to brew. Make it count.",
+  "🐝 A bee visits 2 million flowers to make one pound of honey. Your schedule is easier than that.",
+  "🦈 Sharks are older than trees. Trees are ~350M years old. Sharks: ~450M. Let that sink in.",
+  "🍕 The world's first pizza delivery was made in 1889 — to the Queen of Italy. Standards were high.",
+  "🦴 Humans share 50% of their DNA with bananas. So technically half your team is a fruit.",
+  "🐦 A group of flamingos is called a flamboyance. Your team deserves a name that cool.",
+  "🌙 A day on Venus is longer than a year on Venus. At least your shifts have a set end time.",
+  "🐳 Blue whales have hearts the size of a small car. Yours is probably bigger after a good shift.",
+  "🧠 Your brain generates enough electricity while awake to power a small lightbulb. Use it wisely.",
+  "🦴 The strongest muscle in the body relative to size is the jaw. Useful for coffee.",
+  "🌍 There are more trees on Earth than stars in the Milky Way. Your schedule matters more though.",
+  "🐜 Ants never sleep. Neither does a busy manager. But please — sleep.",
+  "💡 Edison filed 1,093 patents. He also napped constantly. Coincidence? Probably not.",
+  "🦴 Wombat poop is cube-shaped. Nobody asked, but now you know.",
+];
+
+function DailyNugget() {
+  const nugget = React.useMemo(() => NUGGETS[Math.floor(Math.random() * NUGGETS.length)], []);
+  return <div className="mt-2 text-xs text-brand-dark/60 italic">{nugget}</div>;
 }
 
 function TabBtn({ id, tab, setTab, label, icon, badge, vertical = false }) {
